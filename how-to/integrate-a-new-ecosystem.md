@@ -479,3 +479,7 @@ all beyond the `SEMGREP_CONFIG_RULESETS` / `OPENGREP_EXCLUDE` values, see
 This is the same three-file pattern used for
 [adding a new scanner](add-new-scanner.md), applied to ecosystems instead
 of tools.
+
+
+
+--------------------------------------------------------------------------------
