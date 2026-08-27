@@ -28,16 +28,18 @@ depends on a specific CI provider or a specific build ecosystem. See
 - Everything documented here has been built and tested on **Linux x86_64 /
   Ubuntu**, matching the `ubuntu-latest` GitHub Actions runner image. The
   install script (`setup-tools.sh`) is not portable as-is to macOS or
-  native Windows. WSL2 works for Windows because it provides a real Linux
-  userspace. There is currently no working path on native macOS. See
+  native Windows for a native (non-dockerized) setup. WSL2 works for
+  Windows because it provides a real Linux userspace. A dockerized
+  version of the toolchain now closes this gap, see
+  [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md); see
   [tool-installation-flags.md](reference/tool-installation-flags.md) for
-  the open question around eventually containerizing the toolchain to
-  close that gap.
+  the native install-script path.
 
 ## Table of Contents
 
 - [README.md](README.md) (this file)
 - [ABOUT-OWASP-CONTRIBUTION.md](ABOUT-OWASP-CONTRIBUTION.md)
+- [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md)
 - **tutorials/**
   - [01-setup-guide.md](tutorials/01-setup-guide.md)
 - **how-to/**
