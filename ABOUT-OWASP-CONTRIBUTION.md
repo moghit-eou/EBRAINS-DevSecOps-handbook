@@ -32,3 +32,28 @@ opened, based directly on lessons learned while building these pipelines:
   scanning, and normalizing gate checks across scanners so that tools
   reporting CVSS and tools reporting rule severity are handled
   consistently.
+
+## A second upstream contribution: `jwilder/dockerize` CVE report
+
+The OWASP PR above is a documentation contribution. Separately, while
+running the container scanning pipeline against `platform-backend`,
+container scanning flagged several high-severity vulnerabilities inside
+the compiled `dockerize` binary used in `platform-backend`'s container
+image build. These aren't flaws in the `dockerize` codebase, they come
+from the binary being compiled against an outdated Go standard library
+(`v1.25.12`).
+
+| Property | Value |
+|---|---|
+| Discovered by | Container scan against `platform-backend` |
+| Upstream project | `jwilder/dockerize` |
+| Root cause | Binary compiled with outdated Go stdlib (`v1.25.12`) |
+| Upstream issue | [jwilder/dockerize#339](https://github.com/jwilder/dockerize/issues/339) |
+| Requested fix | Rebuild and release compiled with Go 1.25.13 or higher |
+| Status | Open |
+
+### `jwilder/dockerize` and this project are unrelated
+
+`jwilder/dockerize` is a separate, third-party project. The report itself
+is a standalone contribution to the `jwilder/dockerize` upstream
+repository.
