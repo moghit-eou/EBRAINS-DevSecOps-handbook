@@ -17,11 +17,11 @@ Windows.
 | Windows native | Not supported |
 | macOS | No working path yet |
 
-> **Open item, not a decided direction:** packaging the toolchain into a
-> container image published to a registry (so the pipeline runs via
-> `docker run` on any OS instead of the install script) has been raised as
-> a way to close the macOS/native-Windows gap, but is not yet scoped or
-> committed. Do not treat it as a current option.
+> **Update:** the toolchain has since been packaged into a container
+> image, so this gap is closed for the dockerized pipelines. See
+> [ABOUT-JOSS-PUBLICATION.md](../ABOUT-JOSS-PUBLICATION.md), the
+> install-script path described below remains for the native,
+> non-dockerized setup.
 
 ## Flags
 
