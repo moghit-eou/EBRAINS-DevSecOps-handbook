@@ -27,13 +27,13 @@ depends on a specific CI provider or a specific build ecosystem. See
 
 - Everything documented here has been built and tested on **Linux x86_64 /
   Ubuntu**, matching the `ubuntu-latest` GitHub Actions runner image. The
-  install script (`setup-tools.sh`) is not portable as-is to macOS or
-  native Windows for a native (non-dockerized) setup. WSL2 works for
-  Windows because it provides a real Linux userspace. A dockerized
-  version of the toolchain now closes this gap, see
-  [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md); see
-  [tool-installation-flags.md](reference/tool-installation-flags.md) for
-  the native install-script path.
+  install script (`setup-tools.sh`) downloads amd64 release assets and is
+  not portable as-is to native Windows. WSL2 works, because it provides a
+  real Linux userspace. The dockerized toolchain in the blueprint
+  repository closes most of this gap, including macOS, though on Apple
+  Silicon the images run under emulation. See
+  [reference/tool-installation-flags.md](reference/tool-installation-flags.md)
+  for the full platform table.
 
 ## Table of Contents
 
@@ -49,6 +49,7 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [add-new-scanner.md](how-to/add-new-scanner.md)
   - [troubleshooting.md](how-to/troubleshooting.md)
 - **reference/**
+  - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `DevSecOps-CI-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
   - [pipeline-container-scanning.md](reference/pipeline-container-scanning.md)
   - [pipeline-sca.md](reference/pipeline-sca.md)
   - [pipeline-sast.md](reference/pipeline-sast.md)
@@ -65,6 +66,7 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [why-two-sca-tools.md](explanation/why-two-sca-tools.md)
   - [why-sboms.md](explanation/why-sboms.md)
   - [why-opengrep-not-semgrep.md](explanation/why-opengrep-not-semgrep.md)
+  - [why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md)
 - **case-studies/**
   - [platform-backend.md](case-studies/platform-backend.md)
   - [platform-ui.md](case-studies/platform-ui.md)
@@ -112,6 +114,46 @@ uploads its own SARIF category to the Security tab, see
 [reference/exit-codes.md](reference/exit-codes.md) for the full category
 list.
 
+## Two forms of the same pipelines
+
+The pipelines exist in two shapes, running the same `ci/` scripts with the
+same pinned tool versions:
+
+| Form | What it is |
+|---|---|
+| **Vendored** | `ci/` copied into a consuming repository, called from that repository's own workflow files. This is what `platform-backend` and `platform-ui` run. |
+| **Blueprint** | [`DevSecOps-CI-pipelines`](https://github.com/moghit-eou/DevSecOps-CI-pipelines), a standalone repository that adds a `make` and Docker path so the pipelines run with no scanner installed on the host. |
+
+The blueprint is the citable artifact, see
+[ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md). The vendored form
+is what a project actually adopts. For the interface, and for the places
+the two deliberately differ, see
+[reference/reusable-blueprint.md](reference/reusable-blueprint.md).
+
+What lands in a consuming repository is kept deliberately plain: scripts
+and ordinary workflow steps, no custom action and no indirection into
+another repository. Composite actions were prototyped for all three
+pipelines and then removed, largely because a maintainer who did not build
+the pipeline should be able to read a workflow file top to bottom and see
+every command it runs. That argument is set out in
+[explanation/why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md).
+
+## Roadmap
+
+| Item | Status |
+|---|---|
+| Container Scanning, SCA, SAST pipelines | Implemented, running against MIP platform |
+| Dockerized blueprint repository | Implemented |
+| Software paper submission (JOSS or similar) | Prepared, date not yet fixed |
+| Infrastructure as Code (IaC) scanning pipeline | In progress, a fourth pipeline covering Terraform, Kubernetes manifests, Helm charts, and Compose files |
+| Published container image on a registry | Future work |
+
+IaC scanning follows the existing architecture rather than extending an
+existing pipeline: its own workflow, its own orchestrator, its own gate,
+reusing the SARIF and threshold machinery unchanged. See
+[explanation/why-three-independent-pipelines.md](explanation/why-three-independent-pipelines.md)
+for why a fourth independent pipeline is the natural shape.
+
 ## How this handbook is organized
 
 This handbook follows the [Diátaxis](https://diataxis.fr/) framework, the
@@ -154,3 +196,4 @@ DevSecOps Guideline. See
 [ABOUT-OWASP-CONTRIBUTION.md](ABOUT-OWASP-CONTRIBUTION.md) for the full
 history and the still-open question of whether this handbook stays tied to
 the OWASP guide or becomes a standalone EBRAINS publication.
+
