@@ -16,11 +16,15 @@ repository set up the same way.
 > [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix)
 > for how to add it.
 
-**Platform requirement:** this tutorial has only been verified on Linux
-x86_64 (Ubuntu), matching the `ubuntu-latest` GitHub Actions runner. On
-Windows, use WSL2. There is currently no working path on native macOS.
-See [tool-installation-flags.md](../reference/tool-installation-flags.md)
-for current platform compatibility details.
+**Platform requirement:** this tutorial covers the native install path,
+verified on Linux x86_64 (Ubuntu), matching the `ubuntu-latest` GitHub
+Actions runner. On Windows, use WSL2. On macOS, use the dockerized path in
+the blueprint repository instead, since `setup-tools.sh` downloads Linux
+amd64 binaries. See
+[tool-installation-flags.md](../reference/tool-installation-flags.md) for
+the full platform table and
+[reference/reusable-blueprint.md](../reference/reusable-blueprint.md) for
+the `make` interface.
 
 ## What you'll need
 
