@@ -7,36 +7,55 @@ if you're not sure why there are two.
 
 ## CVSS-score gate (Trivy, OSV-Scanner)
 
-The thresholds live in `ci/parse_sarif.py`, inside `evaluate()`:
+The thresholds are read from the environment by `ci/parse_sarif.py`, with
+`8.0` and `5.0` as defaults:
 
 ```python
-return EvaluationResult(
-        gate_failed=max_score >= 8,
-        gate_warn=5 <= max_score < 8,
-    )
+GATE_FAIL_THRESHOLD = float(os.getenv("GATE_FAIL_THRESHOLD", "8.0"))
+GATE_WARN_THRESHOLD = float(os.getenv("GATE_WARN_THRESHOLD", "5.0"))
 ```
 
-This is currently **hardcoded**, not exposed as a config option. To change
-the fail or warn threshold, edit these two lines directly in
-`parse_sarif.py`. This file is shared by `sca_scan.py` and
-`container_scan.py` (the SCA half), so a change here affects both
-pipelines identically, they cannot currently be tuned independently.
+Override them per repository, or per job, without editing any Python. In a
+GitHub Actions workflow, add them to the job's `env:` block:
 
-After editing, re-run the affected pipeline and confirm the new threshold
-is reflected in the printed summary:
+```yaml
+    env:
+      GATE_FAIL_THRESHOLD: "7.0"
+      GATE_WARN_THRESHOLD: "4.0"
+```
+
+For a local dockerized run, set them in `ci/docker/env/sca.env` or
+`ci/docker/env/container-scan.env`. Do not quote the values there, because
+`docker run --env-file` passes quotation marks through literally and
+`float()` will reject them:
+
+```dotenv
+GATE_FAIL_THRESHOLD=7.0
+GATE_WARN_THRESHOLD=4.0
+```
+
+`parse_sarif.py` is shared by `sca_scan.py` and `container_scan.py` (the
+SCA half), but because the values now come from the environment, the two
+pipelines can be tuned independently: set different values in each
+workflow, or in each `.env` file.
+
+After changing them, re-run the affected pipeline and confirm the new
+threshold is reflected in the printed summary, which interpolates the
+current values rather than hardcoding them:
 
 ```bash
 python ci/sca_scan.py
 ```
 
 See [reference/gate-status-cvss.md](../reference/gate-status-cvss.md) for
-what the current default thresholds mean before changing them.
+what the default thresholds mean before changing them.
 
-> **Known limitation:** these thresholds are not exposed as a CLI flag or
-> environment variable, only as constants in `parse_sarif.py`. If a
-> repository needs a threshold different from the shared default, the only
-> current option is to edit `parse_sarif.py` directly for that repository,
-> there is no supported per-repository override.
+> **Set thresholds deliberately, not to make CI green.** Raising
+> `GATE_FAIL_THRESHOLD` because a build is blocked converts a finding into
+> a silent acceptance with no record of the decision. For a specific
+> vulnerability that cannot be fixed, use a suppression entry with an
+> expiry date and a stated reason instead, see
+> [suppress-a-finding.md](suppress-a-finding.md).
 
 ## Rule-severity gate (OpenGrep, Hadolint)
 
