@@ -16,20 +16,36 @@ by a PURL casing collision), see
 
 ## The starting problem
 
-Early local testing pointed OSV Scanner at `~/.m2/platform-backend`,
-a clean Maven local cache populated only by `mvn dependency:resolve`. This
-gave 46 critical findings, scoped correctly to the project's actual
-resolved dependencies. Widening the scope to the full `~/.m2/repository`
-cache made things worse, not better:
+Early local testing pointed OSV Scanner at a Maven cache instead of an
+SBOM. Two scopes were tried, and neither was correct.
 
-| Scope | Critical findings | Why |
+| Scope | Critical findings | Why it is wrong |
 |---|---|---|
-| `dependency:resolve` only | 46 | Correct scope, matches what the SBOM later contains |
-| Full `~/.m2/repository` cache | 91 | Too broad, includes unrelated libraries never used by this project |
+| Cache populated by this project only | 46 | A directory listing, not the resolved dependency graph |
+| Full `~/.m2/repository` cache | 91 | Also holds artifacts from every other project on the machine |
 
-Neither scope is a substitute for scanning the generated SBOM, see
-[explanation/why-sboms.md](../explanation/why-sboms.md) for the mechanism
-behind why.
+A local repository is a download cache, not a dependency list.
+
+Pointed at a directory, the scanner reads every `pom.xml` it finds,
+including the POMs of transitive dependencies Maven downloaded while
+working out the graph. Each of those declares its own dependencies, so the
+scanner walks trees the build never resolved.
+
+It also sees versions the build threw away. Two of your dependencies can
+each pull in the same library at a different version. Maven keeps only
+one, through dependency mediation: the version declared closest to your
+project wins, and ties are broken by declaration order. Both versions stay
+on disk, but only the winner is compiled and packaged. You can decide
+which one wins ahead of time with `dependencyManagement` or by importing a
+BOM, though neither changes what sits in `~/.m2`. See the
+[official Maven documentation on the dependency mechanism](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html).
+
+The SBOM is generated after Maven has resolved the graph, so it records
+the outcome: one entry per library, the version that actually ends up
+compiled into the project. Discarded versions and unrelated cache
+artifacts are absent by construction. That is why these pipelines scan the
+SBOM instead of a directory. See
+[explanation/why-sboms.md](../explanation/why-sboms.md).
 
 ## The worked example
 
@@ -125,8 +141,9 @@ jobs:
           key: ${{ runner.os }}-m2-v1-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-v1-
 
-      - name: Resolve Maven dependencies
-        run: mvn dependency:resolve -q
+      # No separate resolve step: setup-tools.sh runs `mvn dependency:resolve`
+      # itself as part of SBOM generation.
+
       # -------------------------------------------------------------------------------------------------------
 
       - name: Setup tools
@@ -165,3 +182,4 @@ is the concrete proof, not just the claim, behind
 [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md)'s
 statement that only the cache step and the install/resolve command change
 between ecosystems.
+
