@@ -111,9 +111,6 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-npm-v1-${{ hashFiles('**/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-v1-
-
-      - name: Install dependencies
-        run: npm ci
       # ----------------------------------------------------------------------------------------------------------
 
       - name: Setup tools
@@ -144,10 +141,3 @@ jobs:
           path: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
           retention-days: 30
 ```
-
-Compare this to
-[`platform-backend`'s Maven version](platform-backend.md#code-snapshot-platform-backends-actual-scayml):
-every step outside the marked npm block is byte-for-byte identical, only
-the cache path/key and the install command change, exactly the two things
-[integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md#what-actually-changes-per-ecosystem)
-says should change and nothing else.
