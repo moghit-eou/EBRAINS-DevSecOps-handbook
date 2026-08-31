@@ -29,10 +29,15 @@ finding among a hundred LOW findings is enough to fail the gate.
 
 | Status | Condition | Blocks the pipeline? |
 |---|---|---|
-| `PASSED` | `max_score < 5.0` | No |
-| `WARNING` | `5.0 <= max_score < 8.0` | No (logged only) |
-| `FAILED` | `max_score >= 8.0` | **Yes** |
+| `PASSED` | `max_score < GATE_WARN_THRESHOLD` | No |
+| `WARNING` | `GATE_WARN_THRESHOLD <= max_score < GATE_FAIL_THRESHOLD` | No (logged only) |
+| `FAILED` | `max_score >= GATE_FAIL_THRESHOLD` | **Yes** |
 | `ERROR` | Tool crashed, or SARIF file missing/unparseable | **Yes** |
+
+`GATE_FAIL_THRESHOLD` defaults to `8.0` and `GATE_WARN_THRESHOLD` to
+`5.0`. Both are read from the environment, so a repository can tune them
+without editing `parse_sarif.py`, see
+[adjust-severity-gate.md](../how-to/adjust-severity-gate.md).
 
 ## Reference: standard CVSS severity bands
 
@@ -55,3 +60,4 @@ The 5.0 / 8.0 values are hardcoded in `parse_sarif.py`, not exposed as a
 configuration option. See
 [adjust-severity-gate.md](../how-to/adjust-severity-gate.md) to change
 them.
+
