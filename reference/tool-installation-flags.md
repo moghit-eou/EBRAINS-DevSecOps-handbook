@@ -6,22 +6,13 @@ bash ci/setup-tools.sh --install-tool <tool1,tool2,...|all> [--sbom-ecosystem <e
 
 ## Platform support
 
-Tested on **Linux x86_64 / Ubuntu only**, matching the `ubuntu-latest`
-GitHub Actions runner image. Not portable as-is to macOS or native
-Windows.
+The script downloads **Linux x86_64** release assets, matching the
+`ubuntu-latest` GitHub Actions runner image. The architecture is not
+detected at runtime, so the asset URLs are fixed.
 
-| Platform | Status |
-|---|---|
-| Linux x86_64 (Ubuntu) | Supported, this is what's tested |
-| Windows via WSL2 | Works, WSL2 is a real Linux userspace |
-| Windows native | Not supported |
-| macOS | No working path yet |
-
-> **Update:** the toolchain has since been packaged into a container
-> image, so this gap is closed for the dockerized pipelines. See
-> [ABOUT-JOSS-PUBLICATION.md](../ABOUT-JOSS-PUBLICATION.md), the
-> install-script path described below remains for the native,
-> non-dockerized setup.
+The dockerized path in the blueprint repository closes most of this gap,
+because the container is Linux regardless of the host.See
+[reference/reusable-blueprint.md](reusable-blueprint.md) and
 
 ## Flags
 
