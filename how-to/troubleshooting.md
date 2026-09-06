@@ -40,7 +40,7 @@ Rate limiting can still occur **before** the SBOM exists, during the
 dependency resolve/install step itself (`mvn dependency:resolve`,
 `npm ci`, `pip install`, `go mod download`), since that step does talk to
 the registry directly. This is why dependency resolution runs as its own
-explicit CI step ahead of SBOM generation, see
+explicit CI step ahead of SBOM generation,see
 [integrate-a-new-ecosystem.md](integrate-a-new-ecosystem.md), rather than
 letting a scanner resolve artifacts on demand mid-scan.
 
