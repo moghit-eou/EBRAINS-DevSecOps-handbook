@@ -266,8 +266,8 @@ def evaluate(sarif_paths):
                     max_score = max(max_score, float(score))
  
     return EvaluationResult(
-        gate_failed=max_score >= 8,
-        gate_warn=5 <= max_score < 8,
+        gate_failed=max_score >= GATE_FAIL_THRESHOLD,
+        gate_warn=GATE_WARN_THRESHOLD <= max_score < GATE_FAIL_THRESHOLD,
     )
 ```
  
@@ -281,8 +281,8 @@ for each result in the SARIF file:
     keep track of the highest score seen across every result, in every run,
     in every file passed in
  
-return gate_failed (highest score is 8.0 or above)
-return gate_warn (highest score is 5.0 up to 8.0)
+return gate_failed (highest score is at or above GATE_FAIL_THRESHOLD)
+return gate_warn  (highest score sits between the warn and fail thresholds)
 ```
  
 One number, the single highest score found anywhere in the file(s)
@@ -291,8 +291,8 @@ of paths instead of one, that is how `sca_scan.py` could evaluate
 multiple SARIF files as a single gate decision if it needed to, though in
 practice each tool's SARIF file is evaluated on its own.
  
-For the actual pass and fail thresholds (`5.0`, `8.0`) and why they were
-chosen, see [gate-status-cvss.md](gate-status-cvss.md). OpenGrep and
+Both thresholds come from the environment, defaulting to `8.0` and `5.0`.
+For what they mean and why those numbers, see [gate-status-cvss.md](gate-status-cvss.md). OpenGrep and
 Hadolint don't go through `evaluate()` at all, their SARIF output has no
 `security-severity` score to read, see
 [gate-status-rule-severity.md](gate-status-rule-severity.md) for how

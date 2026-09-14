@@ -43,7 +43,7 @@ depends on a specific CI provider or a specific build ecosystem. See
 - **tutorials/**
   - [01-setup-guide.md](tutorials/01-setup-guide.md)
 - **how-to/**
-  - [integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md) — the universal, per-ecosystem integration matrix (Maven, Gradle, npm, raw JavaScript, Python, Go, Rust, and how to add any ecosystem not yet listed)
+  - [integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md), what changes per ecosystem, the branches that exist today, and how to add one that does not
   - [suppress-a-finding.md](how-to/suppress-a-finding.md)
   - [adjust-severity-gate.md](how-to/adjust-severity-gate.md)
   - [add-new-scanner.md](how-to/add-new-scanner.md)
@@ -66,7 +66,6 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [why-two-sca-tools.md](explanation/why-two-sca-tools.md)
   - [why-sboms.md](explanation/why-sboms.md)
   - [why-opengrep-not-semgrep.md](explanation/why-opengrep-not-semgrep.md)
-  - [why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md)
 - **case-studies/**
   - [platform-backend.md](case-studies/platform-backend.md)
   - [platform-ui.md](case-studies/platform-ui.md)
@@ -134,11 +133,8 @@ the two deliberately differ, see
 
 What lands in a consuming repository is kept deliberately plain: scripts
 and ordinary workflow steps, no custom action and no indirection into
-another repository. Composite actions were prototyped for all three
-pipelines and then removed, largely because a maintainer who did not build
-the pipeline should be able to read a workflow file top to bottom and see
-every command it runs. That argument is set out in
-[explanation/why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md).
+another repository. A maintainer who did not build the pipeline should be
+able to read a workflow file top to bottom and see every command it runs.
 
 ## Roadmap
 
@@ -155,6 +151,15 @@ existing pipeline: its own workflow, its own orchestrator, its own gate,
 reusing the SARIF and threshold machinery unchanged. See
 [explanation/why-three-independent-pipelines.md](explanation/why-three-independent-pipelines.md)
 for why a fourth independent pipeline is the natural shape.
+
+## Known limitations
+
+| Limitation | Notes |
+|---|---|
+| Four SBOM ecosystems only | `maven`, `npm`, `golang`, and the `generic` Trivy filesystem fallback. Anything else needs a new branch, see [how-to/integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md). |
+| Linux x86_64 only for the native path | `setup-tools.sh` downloads amd64 assets. The dockerized blueprint path covers other hosts. |
+| No composite action | Composite actions were prototyped for all three pipelines and dropped, so that a workflow file stays readable top to bottom. The cost is that vendored copies of `ci/` drift and have to be re-copied to pick up improvements. |
+| Vendored copies can drift | There is no automatic update from the blueprint into a consuming repository. |
 
 ## How this handbook is organized
 

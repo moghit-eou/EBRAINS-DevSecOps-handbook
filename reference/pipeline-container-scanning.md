@@ -61,7 +61,7 @@ options:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `IMAGE_NAME` | `<service>:testing` | Image reference passed to Trivy and OSV-Scanner |
+| `IMAGE_NAME` | none, must be set | Image reference passed to Trivy and OSV-Scanner |
 | `TRIVY_IGNOREFILE` | `ci/suppress_trivy.yaml` | Trivy suppression file |
 | `OSV_IGNOREFILE` | `ci/suppress_osv_scanner.toml` | OSV-Scanner suppression file |
 | `TRIVY_SCA_SARIF_OUTPUT` | `sca-trivy-container.sarif` | Trivy image scan output |
@@ -69,7 +69,7 @@ options:
 | `SEMGREP_CONFIG_RULESETS` | `semgrep-rules/dockerfile` | OpenGrep ruleset(s) for the Dockerfile |
 | `OPENGREP_SAST_SARIF_OUTPUT` | `sast-opengrep-dockerfile.sarif` | OpenGrep Dockerfile scan output |
 | `HADOLINT_SAST_SARIF_OUTPUT` | `sast-hadolint-dockerfile.sarif` | Hadolint output |
-| `CONTAINER_SCAN_MERGED_SARIF_OUTPUT` | `container-scan-<service>-merged.sarif` | Combined artifact of all four SARIF files |
+| `MERGED_SARIF_OUTPUT` | `container-scan-<service>-merged.sarif` | Combined artifact of all four SARIF files |
 
 ## Running it locally
 
@@ -129,7 +129,7 @@ jobs:
       security-events: write
     env:
       IMAGE_NAME: <service>:testing
-      CONTAINER_SCAN_MERGED_SARIF_OUTPUT: container-scan-<service>-merged.sarif
+      MERGED_SARIF_OUTPUT: container-scan-<service>-merged.sarif
       TRIVY_IGNOREFILE: ci/suppress_trivy.yaml
       OSV_IGNOREFILE: ci/suppress_osv_scanner.toml
       TRIVY_SCA_SARIF_OUTPUT: sca-trivy-container.sarif
@@ -186,13 +186,13 @@ jobs:
         run: |
           python ci/container_scan.py \
             --merge-sarif "${{ env.TRIVY_SCA_SARIF_OUTPUT }}" "${{ env.OSV_SCA_SARIF_OUTPUT }}" "${{ env.OPENGREP_SAST_SARIF_OUTPUT }}" "${{ env.HADOLINT_SAST_SARIF_OUTPUT }}" \
-            --merge-output "${{ env.CONTAINER_SCAN_MERGED_SARIF_OUTPUT }}"
+            --merge-output "${{ env.MERGED_SARIF_OUTPUT }}"
 
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: container-scan-sarif-report
-          path: ${{ env.CONTAINER_SCAN_MERGED_SARIF_OUTPUT }}
+          path: ${{ env.MERGED_SARIF_OUTPUT }}
           retention-days: 30
 ```
 

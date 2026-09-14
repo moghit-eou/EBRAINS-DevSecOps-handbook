@@ -2,8 +2,8 @@
 
 Applies to: **Trivy, OSV-Scanner**, in both the SCA pipeline and the SCA
 half of the Container Scanning pipeline. Ecosystem-independent: the same
-gate applies whether the SBOM came from Maven, Gradle, npm, Python, or Go,
-see [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md).
+gate applies whatever produced the SBOM, see
+[integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md).
 
 ## How the score is computed
 
@@ -56,8 +56,14 @@ why 8.0 was chosen as the fail line rather than 9.0.
 
 ## Where the threshold can be changed
 
-The 5.0 / 8.0 values are hardcoded in `parse_sarif.py`, not exposed as a
-configuration option. See
-[adjust-severity-gate.md](../how-to/adjust-severity-gate.md) to change
-them.
+`parse_sarif.py` reads both values from the environment, so no Python needs
+editing:
+
+```python
+GATE_FAIL_THRESHOLD = float(os.getenv("GATE_FAIL_THRESHOLD", "8.0"))
+GATE_WARN_THRESHOLD = float(os.getenv("GATE_WARN_THRESHOLD", "5.0"))
+```
+
+Set them in a workflow `env:` block, or in `ci/docker/env/*.env` for a local
+run. See [adjust-severity-gate.md](../how-to/adjust-severity-gate.md).
 

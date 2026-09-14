@@ -3,8 +3,11 @@
 This is the single, ecosystem-agnostic guide for wiring Container Scanning,
 SCA, and SAST into any repository, regardless of build tool or language.
 
-Maven, npm, and Go are the ecosystems the pipelines actually run in
-production and in CI. Anything else plugs into the same pattern, see
+`setup-tools.sh` has four SBOM branches today: `maven`, `npm`, `golang`,
+and the `generic` Trivy filesystem fallback. Maven and npm run in
+production, Go runs against the blueprint's test targets, and `generic`
+covers everything else until someone adds a branch. Any other value stops
+the script, see
 [Adding a new ecosystem](#adding-a-new-ecosystem-not-in-the-matrix).
 
 ## What actually changes per ecosystem
@@ -46,8 +49,11 @@ Cache paths and lockfiles for the `actions/cache` step, canonical shape in
 ```bash
 maven)
   echo "Generating SBOM for Maven project ... this may take a while"
-  mvn -B -ntp dependency:resolve -q
-  mvn -B -ntp org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom -q
+  # -C (--strict-checksums): fail on any artifact whose published checksum
+  # does not match, instead of warning. Maven has no lockfile, so this plus
+  # exact versions in the pom is the strongest pin available.
+  mvn -B -ntp -C dependency:resolve -q
+  mvn -B -ntp -C "org.cyclonedx:cyclonedx-maven-plugin:${CYCLONEDX_MAVEN_VERSION}:makeAggregateBom" -q
   ;;
 ```
 
@@ -71,8 +77,15 @@ directly. See [why-sboms.md](../explanation/why-sboms.md).
 ```bash
 npm)
   echo "Generating SBOM for NPM project ... this may take a while"
-  npm ci
-  npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" --output-file target/bom.json
+  # --ignore-scripts: the SBOM step must never execute lifecycle scripts of
+  # the dependencies it is inventorying.
+  npm ci --ignore-scripts --no-audit --no-fund --loglevel=error
+  # The SBOM tool itself is installed from ci/sbom-npm/package-lock.json, so
+  # every byte it runs is sha512-pinned, unlike `npx <pkg>@<version>` which
+  # resolves the tool's own dependencies fresh on every run.
+  npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --prefix "${SCRIPT_DIR}/sbom-npm"
+  mkdir -p target
+  "${SCRIPT_DIR}/sbom-npm/node_modules/.bin/cyclonedx-npm" --output-file target/bom.json
   ;;
 ```
 
@@ -101,9 +114,16 @@ reflect a different dependency set than what is locked. A committed
 golang|go)
   echo "Generating SBOM for Go project ... this may take a while"
   mkdir -p target
-  go mod download
-  go install "github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@${CYCLONEDX_GOMOD_VERSION}"
-  "$(go env GOPATH)/bin/cyclonedx-gomod" mod -json -output target/bom.json
+  # Prebuilt release binary, SHA256 pinned like the scanners. It still needs
+  # the Go toolchain at runtime: cyclonedx-gomod shells out to `go` to
+  # resolve modules.
+  GOMOD_TARBALL="cyclonedx-gomod_${CYCLONEDX_GOMOD_VERSION#v}_linux_amd64.tar.gz"
+  download_and_verify \
+    "https://github.com/CycloneDX/cyclonedx-gomod/releases/download/${CYCLONEDX_GOMOD_VERSION}/${GOMOD_TARBALL}" \
+    "${TMP_DIR}/${GOMOD_TARBALL}" \
+    "${CYCLONEDX_GOMOD_SHA256}"
+  tar -xzf "${TMP_DIR}/${GOMOD_TARBALL}" -C "${TMP_DIR}" cyclonedx-gomod
+  "${TMP_DIR}/cyclonedx-gomod" mod -json -output target/bom.json
   ;;
 ```
 
@@ -122,7 +142,7 @@ declared property as the Maven and npm paths.
 </details>
 
 <details>
-<summary><strong>Gradle</strong> (example, not yet run in production)</summary>
+<summary><strong>Gradle</strong> (worked example, no branch exists yet)</summary>
 
 Add the plugin to `build.gradle`:
 
@@ -132,7 +152,8 @@ plugins {
 }
 ```
 
-Then add the branch:
+Then add the branch. This branch is **not** in `setup-tools.sh` today, so
+`--sbom-ecosystem gradle` fails until you add it:
 
 ```bash
 gradle)
@@ -166,8 +187,9 @@ Trivy build the SBOM by scanning the filesystem:
 
 ```bash
 generic|auto)
+  echo "Generating SBOM via generic Trivy filesystem scan (less accurate)"
   mkdir -p target
-  trivy fs --format cyclonedx --output target/bom.json .
+  trivy fs --format cyclonedx --output target/bom.json "${SCAN_PATH:-.}"
   ;;
 ```
 
@@ -179,11 +201,12 @@ there is no resolution step, so the result reflects what the lockfile
 declares rather than what the build resolves. See
 [why-sboms.md](../explanation/why-sboms.md).
 
-> **Availability.** The `generic` branch exists in the blueprint
-> repository only. Neither `platform-backend` nor `platform-ui` needs it,
-> since both have a native generator, so it was never added to their
-> vendored copy of `setup-tools.sh`. Copy the branch across if you want it.
-> See [reference/reusable-blueprint.md](../reference/reusable-blueprint.md).
+> **Availability.** `platform-backend` and `platform-ui` do not carry this
+> branch in their vendored `setup-tools.sh`, because both have a native
+> generator and never needed it. `datacatalog` does, and uses it for its
+> Poetry-managed Python service, see
+> [case-studies/datacatalog.md](../case-studies/datacatalog.md#why-python-used-generic).
+> Copy the branch across if your vendored copy predates it.
 
 ## The generic `sca.yml` template
 

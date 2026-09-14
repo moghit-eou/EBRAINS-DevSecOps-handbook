@@ -96,9 +96,8 @@ conflict resolution decided to use (nearest-definition, first-come-wins,
 BOM order), not necessarily the version declared by a specific transitive
 dependency. See
 [explanation/why-sboms.md](../explanation/why-sboms.md) for the full
-mechanics and a worked example. The same class of problem applies to
-Gradle (resolve before generating) and Go (`go.sum` must be up to date
-before `cyclonedx-gomod` runs).
+mechanics and a worked example. The same class of problem applies to Go, where `go.sum` must be up to date
+before `cyclonedx-gomod` runs.
 
 ### npm: `ELSPROBLEMS` / peer dependency errors during SBOM generation
 
@@ -140,25 +139,29 @@ without a full install, `npm install --package-lock-only --legacy-peer-deps`
 regenerates only the lockfile without touching `node_modules`. Don't rely
 on this in CI, it's a local debugging step, not a substitute for `npm ci`.
 
-### Raw JavaScript: `cdxgen` finds nothing, or under-reports components
+### `generic`: the SBOM is thinner than you expected
 
-`cdxgen`'s filesystem mode fingerprints known library signatures inside
-vendored/bundled files, it has no manifest to read. If a vendored script
-has been minified, renamed, or bundled into a single file with other
-scripts, `cdxgen` may not recognize it. This is an inherent limitation of
-manifest-free SBOM generation, not a misconfiguration, treat any SBOM
-produced this way as a best-effort inventory, and prefer moving the
-project onto a package manager if reliable SCA coverage matters.
+`ECOSYSTEM: generic` runs `trivy fs --format cyclonedx`, which has no
+resolve step and no package manager behind it. It finds dependencies only
+by recognising lockfiles it already supports (`poetry.lock`,
+`requirements.txt`, `Cargo.lock`, `Gemfile.lock`, `composer.lock`, and
+others), so coverage depends on whether your lockfile is one of them.
 
-### Python: `cyclonedx-py` output doesn't match what's actually installed
+Two consequences worth knowing before trusting the output:
 
-`cyclonedx-py` has a separate subcommand per dependency manager
-(`requirements`, `poetry`, `pipenv`, `environment`). Running
-`cyclonedx-py requirements requirements.txt` against a Poetry-managed
-project (which may not even have a `requirements.txt`) either fails or
-produces an incomplete SBOM. Match the subcommand to how the project
-actually declares dependencies, see
+- **Dev dependencies may be excluded.** Trivy prints
+  `Suppressing dependencies for development and testing` and leaves them
+  out. A native generator such as `cyclonedx-py poetry` includes them.
+  Neither is wrong, but the choice decides whether a CVE in a test-only
+  package can block a release.
+- **No resolution means declared versions, not resolved ones.** This is the
+  problem [why-sboms.md](../explanation/why-sboms.md) exists to describe,
+  reintroduced in a smaller form.
+
+If the gaps matter, add a native branch for the ecosystem, see
 [integrate-a-new-ecosystem.md](integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix).
+A worked comparison of `generic` against a native Poetry generator is in
+[case-studies/datacatalog.md](../case-studies/datacatalog.md#why-python-used-generic).
 
 ### Both ecosystems: SBOM step succeeds but scanners still report old data
 

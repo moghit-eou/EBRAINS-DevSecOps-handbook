@@ -8,7 +8,7 @@
 | Scans | Application dependencies, via a generated SBOM, not the source code and not a container image |
 | Tools | Trivy, OSV-Scanner |
 | Gate model | CVSS-score gate (see [gate-status-cvss.md](gate-status-cvss.md)) |
-| Supported ecosystems | Maven, Gradle, npm, raw JavaScript, Python, Go, Rust — plus any ecosystem you add yourself, see [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md) |
+| SBOM ecosystems | `maven`, `npm`, `golang`, and the `generic` Trivy filesystem fallback. Others need a new branch, see [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md) |
 
 ## Execution order
 
@@ -64,8 +64,7 @@ OSV-Scanner's own exit code.
 
 ## Running it locally
 
-Exact install/SBOM commands per ecosystem (Maven, Gradle, npm, raw
-JavaScript, Python, Go) are in
+Exact install and SBOM commands per ecosystem are in
 [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md#ecosystem-matrix).
 General shape:
 
@@ -91,7 +90,7 @@ is one concrete implementation of them:
 | 1 | Check out the repository | No | Standard source checkout |
 | 2 | Set up a Python runtime | No | `parse_sarif.py` and the orchestrators are Python; this is required even for a non-Python project being scanned |
 | 3 | Restore the cached dependency store | **Yes** | Path + key vary per ecosystem, see [Caching](#caching) below |
-| 4 | Install / resolve dependencies | **Yes** | `mvn dependency:resolve -q`, `npm ci`, `pip install -r requirements.txt`, `go mod download`, or the equivalent for your ecosystem |
+| 4 | Install / resolve dependencies | **Yes** | Runs inside `setup-tools.sh`'s `--sbom-ecosystem` branch, not as a separate workflow step. Only `generic` resolves nothing |
 | 5 | Install scanner tooling and generate the SBOM (`setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem <ecosystem>`) | No (parameterized) | Installs the two SCA binaries and generates `target/bom.json` |
 | 6 | Run the SCA scan (`python ci/sca_scan.py`) | No | Runs both tools against the SBOM, applies the CVSS-score gate |
 | 7 | Publish SARIF results and the report artifact | No | One category per tool, plus the merged artifact |
@@ -147,8 +146,8 @@ This is a concrete, generic example of the vendor-neutral steps above,
 expressed as a GitHub Actions workflow, with the ecosystem-specific block
 called out. Swap in the matching cache path/key and install command from
 the [ecosystem matrix](../how-to/integrate-a-new-ecosystem.md#ecosystem-matrix)
-(Maven, Gradle, npm, raw JavaScript, Python, Go, or an ecosystem you've
-added yourself, see
+(`maven`, `npm`, `golang`, `generic`, or an ecosystem you have added
+yourself, see
 [Adding a new ecosystem](../how-to/integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix)):
 everything else in the file is identical regardless of language. The
 cache step itself takes the exact shape shown once in
@@ -227,11 +226,10 @@ jobs:
 > [platform-backend.md](../case-studies/platform-backend.md) for real,
 > SHA-pinned examples.
 >
-> **Not limited to the ecosystems listed above.** Maven, Gradle, npm, raw
-> JavaScript, Python, and Go are the ecosystems this project has actually
-> tested against; they are worked examples of the pattern, not a fixed
-> list. Any ecosystem with a CycloneDX SBOM generator (Rust/Cargo,
-> PHP/Composer, Ruby/Bundler, and .NET/NuGet all have one, check the
+> **Not limited to the branches that exist today.** `maven`, `npm`,
+> `golang`, and `generic` are what `setup-tools.sh` implements right now.
+> Any ecosystem with a CycloneDX SBOM generator (Gradle, Poetry, Rust/Cargo,
+> PHP/Composer, Ruby/Bundler, .NET/NuGet all have one, check the
 > [CycloneDX tool center](https://cyclonedx.org/tool-center/) before
 > writing a custom generator) can be plugged into this same template by
 > swapping the cache step, the install command, and the
