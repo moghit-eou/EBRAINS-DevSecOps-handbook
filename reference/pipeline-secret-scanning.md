@@ -27,16 +27,19 @@ past. A history sweep is separate work, see
 
 ## Why it is not in the blueprint
 
-`reusable-ci-pipelines` does not carry this pipeline. It is deliberately
-minimal, it exists to cover an OWASP DSOMM control on the two MIP
-components, and it does not have the ecosystem parameterisation, the shared
-gate, or the SARIF normalisation that make the other three reusable. A
-project wanting secret scanning is better served by adding Gitleaks
-directly, or by GitHub's own push protection, than by copying this.
+`reusable-ci-pipelines` does not include this pipeline. It is very small on
+purpose. It covers a secret scanning control from the OWASP DevSecOps
+Guideline on the two MIP repositories, and that is all it does.
 
-The three pipelines in the blueprint are reusable by design. This one is
-not, and is documented here rather than promoted.
+It is missing the things that make the other three worth copying. There is
+no ecosystem setting, no shared gate, and no SARIF handling. It just runs
+one tool and checks the result.
 
+So if you want secret scanning, add Gitleaks to your workflow yourself, or
+turn on GitHub push protection. Both are easier than copying this.
+
+The three pipelines in the blueprint are built to be reused. This one is
+not. It is written down here so you know it exists, not so you copy it.
 ## What it runs
 
 ```yaml
@@ -107,9 +110,3 @@ that OpenGrep and Hadolint findings do not, see
 Because it uploads no artifact, the optional artifact encryption in
 [how-to/encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md)
 does not apply to it.
-
-## Known gap
-
-The `upload-sarif` step in `secrets-scan.yml` is still pinned to a v2 commit
-of `github/codeql-action`, where the other three pipelines run v4. It works,
-but it should be brought in line.
