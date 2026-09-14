@@ -7,12 +7,11 @@ your own machine, start to finish. It uses a generic placeholder
 every supported ecosystem, not just Maven and npm, so it applies to any
 repository set up the same way.
 
-> Maven and npm are shown first below only because they're the two
-> ecosystems the reference implementations (`platform-backend`,
-> `platform-ui`) actually run, so they're the two commands verified against
-> a live repository. Gradle, Python, Go, and Rust are documented right
-> alongside them, and if your project uses something else entirely, the
-> pipeline isn't limited to any fixed list, see
+> Maven and npm are the two ecosystems the reference implementations
+> (`platform-backend`, `platform-ui`) actually run, so they are the two
+> verified against a live repository. Go has a native branch exercised by
+> the blueprint's test targets. Everything else goes through the `generic`
+> fallback until someone adds a branch for it, see
 > [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix)
 > for how to add it.
 
@@ -60,80 +59,67 @@ a full SARIF report, once as the actual pass/fail gate. See
 and for how to choose `SEMGREP_CONFIG_RULESETS` for a language not shown
 in the existing examples.
 
-Expect a `sast-opengrep-app.sarif` file (or your project's configured
-output name) in the working directory when this finishes.
+Expect a `sast-opengrep.sarif` file (or whatever `OPENGREP_SARIF_OUTPUT`
+is set to) in the working directory when this finishes.
 
 ## Step 3: Run the SCA pipeline
 
 SCA scans your application's declared dependencies, via a generated SBOM,
-not your source code and not a container image. The install/resolve step
-and the `--sbom-ecosystem` value are the only two things that change
-between ecosystems, everything after that is identical.
+not your source code and not a container image. The `--sbom-ecosystem`
+value is the only thing that changes between ecosystems. Everything after
+that is identical.
 
 **Maven:**
 ```bash
-mvn dependency:resolve -q
 bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem maven
-python ci/sca_scan.py
-```
-
-**Gradle:**
-```bash
-./gradlew dependencies --write-locks -q
-bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem gradle
 python ci/sca_scan.py
 ```
 
 **npm:**
 ```bash
-npm ci
 bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem npm
-python ci/sca_scan.py
-```
-
-**Python:**
-```bash
-pip install -r requirements.txt
-bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem python
 python ci/sca_scan.py
 ```
 
 **Go:**
 ```bash
-go mod download
-bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem go
+bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem golang
 python ci/sca_scan.py
 ```
 
-**Rust:**
+**Everything else** (Python, Rust, Gradle, PHP, Ruby, .NET) uses the
+`generic` fallback, a Trivy filesystem scan that reads whatever lockfile it
+recognises:
 ```bash
-cargo fetch --locked
-bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem rust
+bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem generic
 python ci/sca_scan.py
 ```
 
-**Anything else** (PHP, Ruby, .NET, or a language not listed above): the
-same three-line shape applies, install/resolve dependencies, run
-`setup-tools.sh` with your ecosystem name, run `sca_scan.py`. See
+Note that `setup-tools.sh` runs the resolve step itself inside each branch
+(`mvn dependency:resolve`, `npm ci`, and the Go module resolution that
+`cyclonedx-gomod` triggers). You do not need a separate resolve command
+first. `generic` resolves nothing, which is why it is less accurate.
+
+If `generic` is not accurate enough for your ecosystem, add a native
+branch. The shape is the same: resolve dependencies, then write a CycloneDX
+file to `SBOM_PATH`. See
 [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix)
 to add the one missing piece: a `setup-tools.sh` branch that produces a
 CycloneDX SBOM for your ecosystem.
 
-For npm specifically, use `npm ci`, not `npm install`, before generating
-the SBOM: `npm ci` installs strictly from `package-lock.json`, wipes
-`node_modules` first for a clean install, and fails immediately if
-`package.json` and `package-lock.json` are out of sync, instead of
-silently rewriting the lockfile. If it fails, regenerate the lockfile
-locally with `npm install` and commit the result, don't work around the
-failure inside the pipeline.
+The npm branch runs `npm ci`, never `npm install`. `npm ci` installs
+strictly from `package-lock.json`, wipes `node_modules` first, and fails
+immediately if `package.json` and `package-lock.json` are out of sync
+rather than silently rewriting the lockfile. If it fails, regenerate the
+lockfile locally with `npm install` and commit the result. Do not work
+around the failure inside the pipeline.
 
 This installs Trivy and OSV-Scanner, generates a CycloneDX SBOM at
 `target/bom.json`, then scans that SBOM (not your local dependency cache)
 with both tools. See [why-sboms.md](../explanation/why-sboms.md) for why
 the SBOM, and not the raw dependency cache, is what gets scanned, and
 [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md) if
-your project uses a build tool not listed above (raw JavaScript with no
-package manager, for example).
+you want a native branch instead of the `generic` fallback.
 
 ## Step 4: Run the Container Scanning pipeline
 

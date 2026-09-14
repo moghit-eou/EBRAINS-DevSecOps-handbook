@@ -11,15 +11,16 @@ The script downloads **Linux x86_64** release assets, matching the
 detected at runtime, so the asset URLs are fixed.
 
 The dockerized path in the blueprint repository closes most of this gap,
-because the container is Linux regardless of the host.See
-[reference/reusable-blueprint.md](reusable-blueprint.md) and
+because the container is Linux regardless of the host. See
+[reusable-blueprint.md](reusable-blueprint.md) for the `make` interface and
+the full platform table.
 
 ## Flags
 
 | Flag | Values | Purpose |
 |---|---|---|
 | `--install-tool` | comma-separated list, or `all` | Which scanner binaries to install |
-| `--sbom-ecosystem` | `maven`, `gradle`, `npm`, `raw-js`, `python`, `go`, `rust`, `none`, or a value you add yourself | Which SBOM generator to run after tool installation, see [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md) |
+| `--sbom-ecosystem` | `maven`, `npm`, `golang` (alias `go`), `generic` (alias `auto`), `none` | Which SBOM generator to run after tool installation. Any other value stops the script, see [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md) to add one |
 
 ## Installable tools
 
@@ -41,8 +42,8 @@ at the top of the script:
 
 ```bash
 # renovate: datasource=github-release-attachments depName=aquasecurity/trivy
-TRIVY_VERSION="${TRIVY_VERSION:-v0.71.1}"
-TRIVY_SHA256="${TRIVY_SHA256:-3cbae37cd440cd8676e5ce9207fe460b5641c7579a17e9d00f8894928c41a88d}"
+TRIVY_VERSION="${TRIVY_VERSION:-v0.74.0}"
+TRIVY_SHA256="${TRIVY_SHA256:-2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a}"
 ```
 
 The `# renovate:` comment lets Renovate bump the version and its matching
@@ -121,22 +122,25 @@ downstream error.
 
 ## SBOM generation (`--sbom-ecosystem`)
 
-| Value | Command run |
-|---|---|
-| `maven` | `mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom -q` |
-| `gradle` | `./gradlew cyclonedxBom -q` |
-| `npm` | `npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" --output-file target/bom.json` |
-| `raw-js` | `npx --yes @cyclonedx/cdxgen -t js -o target/bom.json .` |
-| `python` | `cyclonedx-py requirements requirements.txt -o target/bom.json` |
-| `go` | `cyclonedx-gomod mod -json -output target/bom.json` |
-| `rust` | `cargo cyclonedx --format json --override-filename bom` (then normalized to `target/bom.json`) |
-| `none` | No SBOM generated |
+These are the `case` branches that exist in `setup-tools.sh` today. Every
+one of them resolves dependencies before generating the SBOM, which is the
+whole point, see [why-sboms.md](../explanation/why-sboms.md).
 
-This table is not a hard ceiling on what the pipeline supports, it's the
-set of `case` branches already written into `setup-tools.sh`. Adding a
-value not listed here (PHP, Ruby, .NET, or anything else with a CycloneDX
-generator) is a one-branch addition, not a change to this flag's design,
-see
+| Value | What it runs | Resolves first? |
+|---|---|---|
+| `maven` | `mvn -B -ntp -C dependency:resolve`, then the CycloneDX Maven plugin's `makeAggregateBom` at a pinned version | Yes |
+| `npm` | `npm ci --ignore-scripts`, then `cyclonedx-npm` from the lockfile-pinned install under `ci/sbom-npm/` | Yes |
+| `golang`, `go` | The SHA256-pinned `cyclonedx-gomod` release binary, `cyclonedx-gomod mod -json`, which shells out to the Go toolchain to resolve modules | Yes |
+| `generic`, `auto` | `trivy fs --format cyclonedx`, which reads whatever lockfiles Trivy recognises | No |
+| `none` | Nothing. Used by `container-scan.yml`, which scans an image and needs no SBOM | n/a |
+
+**Any other value stops the script.** The `case` ends in a `*)` branch that
+prints `Unknown SBOM_ECOSYSTEM: <value>` and exits 1. There is no silent
+fallback to `generic`.
+
+Adding a value not listed here (Gradle, Poetry, PHP, Ruby, .NET, or
+anything else with a CycloneDX generator) is a one-branch addition, not a
+change to this flag's design, see
 [Adding a new ecosystem](../how-to/integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix).
 
 `container-scan.yml` scans the built image directly and needs no SBOM, so

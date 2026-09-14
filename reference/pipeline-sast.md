@@ -149,7 +149,7 @@ jobs:
       - name: Run SAST scan
         run: python ci/sast_scan.py
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OPENGREP_SARIF_OUTPUT }}
@@ -163,9 +163,10 @@ jobs:
           retention-days: 30
 ```
 
-> **Note on Action versions:** pin every `uses:` to a full commit SHA in a
-> real workflow rather than the floating `@v7`-style tags shown here for
-> readability, see [platform-ui.md](../case-studies/platform-ui.md) for a
+> **Note on Action versions:** the `@v4`/`@v7`-style tags here are for
+> readability. Pin every `uses:` to a full commit SHA in a real workflow, and
+> check the tag is still current before you do, a major version can be
+> retired under you, see [platform-ui.md](../case-studies/platform-ui.md) for a
 > real, SHA-pinned example.
 >
 > **Not limited to Java or TypeScript.** `semgrep-rules/java` and

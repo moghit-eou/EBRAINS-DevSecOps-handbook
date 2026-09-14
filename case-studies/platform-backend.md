@@ -69,8 +69,8 @@ volume of requests from a single CI-runner IP as abuse. This is
 documented, with Trivy's own recommended mitigation
 (`--offline-scan`), in
 [how-to/troubleshooting.md](../how-to/troubleshooting.md).
-This is also part of why `mvn dependency:resolve` runs as its own explicit
-CI step ahead of SBOM generation, see
+This is also part of why `mvn dependency:resolve` runs ahead of SBOM
+generation at all, see
 [reference/pipeline-sca.md](../reference/pipeline-sca.md), rather than
 letting Trivy resolve artifacts on demand during the scan itself.
 
@@ -78,8 +78,9 @@ letting Trivy resolve artifacts on demand during the scan itself.
 
 - SCA scans the generated SBOM (`target/bom.json`), not the raw
   dependency cache, for every ecosystem, not just Maven.
-- `mvn dependency:resolve -q` runs as an explicit, separate CI step before
-  SBOM generation.
+- `mvn dependency:resolve` runs before SBOM generation, inside
+  `setup-tools.sh`'s `maven` branch rather than as a separate workflow step,
+  so a local run resolves exactly the way CI does.
 - Both Trivy and OSV-Scanner run against the SBOM, gated through the
   shared `parse_sarif.evaluate()` CVSS-score model.
 - The `~/.m2/repository` cache (not the whole `~/.m2` directory, which
@@ -91,12 +92,28 @@ resulting workflow, and
 [explanation/why-sboms.md](../explanation/why-sboms.md) for the general
 explanation this case study is the evidence for.
 
+### Encrypted SARIF artifacts
+
+The live workflow does not upload the merged SARIF in the clear. Between the
+scan step and the upload step it encrypts the report with `gpg --symmetric`
+under an `ARTIFACT_PASSWORD` repository secret, deletes the plaintext, and
+uploads only the `.gpg`. Runs that do not receive the secret, Dependabot,
+Renovate and fork pull requests, log a warning and upload nothing.
+
+This repository is public, so its workflow artifacts are downloadable by any
+signed-in GitHub user, while Security tab alerts need write access. The
+encryption closes that gap. It is optional and applies to all three
+pipelines here, see
+[how-to/encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md).
+
 ## Code snapshot: `platform-backend`'s actual `sca.yml`
 
-This is a trimmed version of the real, currently-running workflow (Action
-`uses:` pins shortened for readability; the live file pins full commit
-SHAs, see [tool-installation-flags.md](../reference/tool-installation-flags.md)
-for why). It's the concrete instance of the
+This is a trimmed version of the real, currently-running workflow. Action
+`uses:` pins are shortened for readability, the live file pins full commit
+SHAs, see
+[tool-installation-flags.md](../reference/tool-installation-flags.md) for
+why. The artifact encryption steps described above are also omitted here, to
+keep the ecosystem comparison below readable. It's the concrete instance of the
 [generic SCA template](../reference/pipeline-sca.md#generic-github-actions-template),
 with the Maven block filled in:
 
@@ -126,7 +143,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -154,14 +171,14 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
           category: trivy-app
 
       - name: Upload OSV Scanner SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
           category: osv-scanner-app

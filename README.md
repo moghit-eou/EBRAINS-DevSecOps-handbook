@@ -30,8 +30,9 @@ depends on a specific CI provider or a specific build ecosystem. See
   install script (`setup-tools.sh`) downloads amd64 release assets and is
   not portable as-is to native Windows. WSL2 works, because it provides a
   real Linux userspace. The dockerized toolchain in the blueprint
-  repository closes most of this gap, including macOS, though on Apple
-  Silicon the images run under emulation. See
+  repository should close most of this gap, macOS included, though that has
+  not been tested and on Apple Silicon the images would run under emulation.
+  See
   [reference/tool-installation-flags.md](reference/tool-installation-flags.md)
   for the full platform table.
 
@@ -43,16 +44,18 @@ depends on a specific CI provider or a specific build ecosystem. See
 - **tutorials/**
   - [01-setup-guide.md](tutorials/01-setup-guide.md)
 - **how-to/**
-  - [integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md) — the universal, per-ecosystem integration matrix (Maven, Gradle, npm, raw JavaScript, Python, Go, Rust, and how to add any ecosystem not yet listed)
+  - [integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md), what changes per ecosystem, the branches that exist today, and how to add one that does not
   - [suppress-a-finding.md](how-to/suppress-a-finding.md)
   - [adjust-severity-gate.md](how-to/adjust-severity-gate.md)
   - [add-new-scanner.md](how-to/add-new-scanner.md)
+  - [encrypt-sarif-artifacts.md](how-to/encrypt-sarif-artifacts.md), optional, for a public repository whose findings are sensitive
   - [troubleshooting.md](how-to/troubleshooting.md)
 - **reference/**
-  - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `DevSecOps-CI-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
+  - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `reusable-ci-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
   - [pipeline-container-scanning.md](reference/pipeline-container-scanning.md)
   - [pipeline-sca.md](reference/pipeline-sca.md)
   - [pipeline-sast.md](reference/pipeline-sast.md)
+  - [pipeline-secret-scanning.md](reference/pipeline-secret-scanning.md), MIP-only, working tree not git history
   - [python-orchestrators.md](reference/python-orchestrators.md)
   - [tool-installation-flags.md](reference/tool-installation-flags.md)
   - [exit-codes.md](reference/exit-codes.md)
@@ -66,10 +69,10 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [why-two-sca-tools.md](explanation/why-two-sca-tools.md)
   - [why-sboms.md](explanation/why-sboms.md)
   - [why-opengrep-not-semgrep.md](explanation/why-opengrep-not-semgrep.md)
-  - [why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md)
 - **case-studies/**
   - [platform-backend.md](case-studies/platform-backend.md)
   - [platform-ui.md](case-studies/platform-ui.md)
+  - [datacatalog.md](case-studies/datacatalog.md) — adopting the pipelines into a repository the handbook had never seen, three services and three package managers in one repo
 
 ## Why this exists
 
@@ -85,20 +88,35 @@ as the implementation reference.
 The outcome is a working reference pipeline that produces security
 artifacts automatically (scan reports, SBOMs, gate decisions), proven
 against two MIP components with different stacks (`platform-backend`,
-Maven/Java; `platform-ui`, npm/Angular) plus their container images, and
-packaged here as a reusable, ecosystem-agnostic secure-pipeline blueprint.
+Maven/Java, and `platform-ui`, npm/Angular) plus their container images,
+then adopted into a third repository it was not designed around
+(`datacatalog`, three services and three package managers), and packaged
+here as a reusable, ecosystem-agnostic secure-pipeline blueprint.
 
 ## What is actually implemented
 
-Three independent GitHub Actions pipelines, each following the OWASP
-DevSecOps model, each with its own workflow file, orchestrator script, and
-gate:
+Three independent, reusable GitHub Actions pipelines, each following the
+OWASP DevSecOps model, each with its own workflow file, orchestrator script,
+and gate:
 
 | Pipeline | Scans | Tools |
 |---|---|---|
-| **Container Scanning** | The built Docker image + the Dockerfile itself | Trivy, OSV-Scanner (image CVEs); Hadolint, OpenGrep (Dockerfile SAST) |
+| **Container Scanning** | The built Docker image and the Dockerfile itself | Trivy, OSV-Scanner for image CVEs, Hadolint and OpenGrep for the Dockerfile |
 | **SCA** (Software Composition Analysis) | Application dependencies, via a generated SBOM (CycloneDX) | Trivy, OSV-Scanner |
 | **SAST** (Static Application Security Testing) | Application source code | OpenGrep |
+
+Plus one pipeline that runs on the MIP components only and is **not** part
+of the reusable blueprint:
+
+| Pipeline | Scans | Tool | Why it is separate |
+|---|---|---|---|
+| **Secret Scanning** | The checked-out working tree, **not** git history | Gitleaks | Deliberately minimal, no orchestrator and no shared gate. It covers a DSOMM control on MIP rather than being something other projects should copy. See [reference/pipeline-secret-scanning.md](reference/pipeline-secret-scanning.md) |
+
+`platform-backend` and `platform-ui` also encrypt their SARIF workflow
+artifacts, because both repositories are public and a findings report is a
+list of exactly which CVEs are unpatched. That is optional and separate from
+the pipelines themselves, see
+[how-to/encrypt-sarif-artifacts.md](how-to/encrypt-sarif-artifacts.md).
 
 See [reference/pipeline-container-scanning.md](reference/pipeline-container-scanning.md),
 [reference/pipeline-sca.md](reference/pipeline-sca.md), and
@@ -109,10 +127,11 @@ GitHub Security tab) lives in
 [explanation/why-three-independent-pipelines.md](explanation/why-three-independent-pipelines.md#independent-triggers-and-parallel-execution)
 rather than being repeated here.
 
-All three workflows trigger independently and run in parallel; each
-uploads its own SARIF category to the Security tab, see
-[reference/exit-codes.md](reference/exit-codes.md) for the full category
-list.
+All three workflows trigger independently and run in parallel; each uploads
+its own SARIF category to the Security tab. The categories each pipeline
+uses are listed in its own reference page above, and
+[reference/exit-codes.md](reference/exit-codes.md) covers what each
+resulting status means.
 
 ## Two forms of the same pipelines
 
@@ -121,8 +140,8 @@ same pinned tool versions:
 
 | Form | What it is |
 |---|---|
-| **Vendored** | `ci/` copied into a consuming repository, called from that repository's own workflow files. This is what `platform-backend` and `platform-ui` run. |
-| **Blueprint** | [`DevSecOps-CI-pipelines`](https://github.com/moghit-eou/DevSecOps-CI-pipelines), a standalone repository that adds a `make` and Docker path so the pipelines run with no scanner installed on the host. |
+| **Vendored** | `ci/` copied into a consuming repository, called from that repository's own workflow files. This is what `platform-backend`, `platform-ui` and `datacatalog` run. |
+| **Blueprint** | [`reusable-ci-pipelines`](https://github.com/moghit-eou/reusable-ci-pipelines), a standalone repository that adds a `make` and Docker path so the pipelines run with no scanner installed on the host. |
 
 The blueprint is the citable artifact, see
 [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md). The vendored form
@@ -132,11 +151,8 @@ the two deliberately differ, see
 
 What lands in a consuming repository is kept deliberately plain: scripts
 and ordinary workflow steps, no custom action and no indirection into
-another repository. Composite actions were prototyped for all three
-pipelines and then removed, largely because a maintainer who did not build
-the pipeline should be able to read a workflow file top to bottom and see
-every command it runs. That argument is set out in
-[explanation/why-vendored-not-composite-actions.md](explanation/why-vendored-not-composite-actions.md).
+another repository. A maintainer who did not build the pipeline should be
+able to read a workflow file top to bottom and see every command it runs.
 
 ## Roadmap
 
@@ -153,6 +169,16 @@ existing pipeline: its own workflow, its own orchestrator, its own gate,
 reusing the SARIF and threshold machinery unchanged. See
 [explanation/why-three-independent-pipelines.md](explanation/why-three-independent-pipelines.md)
 for why a fourth independent pipeline is the natural shape.
+
+## Known limitations
+
+| Limitation | Notes |
+|---|---|
+| Secret scanning misses git history | `gitleaks dir .` walks the working tree. A secret committed and later removed stays in history and is not reported. A history sweep is separate work. |
+| Four SBOM ecosystems only | `maven`, `npm`, `golang`, and the `generic` Trivy filesystem fallback. Anything else needs a new branch, see [how-to/integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md). |
+| Linux x86_64 only for the native path | `setup-tools.sh` downloads amd64 assets. The dockerized blueprint path covers other hosts. |
+| No composite action | Composite actions were prototyped for all three pipelines and dropped, so that a workflow file stays readable top to bottom. The cost is that vendored copies of `ci/` drift and have to be re-copied to pick up improvements. |
+| Vendored copies can drift | There is no automatic update from the blueprint into a consuming repository. |
 
 ## How this handbook is organized
 
@@ -186,8 +212,9 @@ content there later, if that path is chosen, needs minimal rework:
 - Want to understand *why* the pipelines are built this way: go to
   [explanation/](explanation/).
 - Want the concrete, named story of how this was built and validated
-  against `platform-backend` (Maven) and `platform-ui` (npm): read
-  [case-studies/](case-studies/).
+  against `platform-backend` (Maven) and `platform-ui` (npm), or how it was
+  then adopted into a third repository it had never been designed around
+  (`datacatalog`): read [case-studies/](case-studies/).
 
 ## Relationship to OWASP
 

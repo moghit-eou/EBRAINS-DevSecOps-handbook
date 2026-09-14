@@ -61,7 +61,7 @@ options:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `IMAGE_NAME` | `<service>:testing` | Image reference passed to Trivy and OSV-Scanner |
+| `IMAGE_NAME` | none, must be set | Image reference passed to Trivy and OSV-Scanner |
 | `TRIVY_IGNOREFILE` | `ci/suppress_trivy.yaml` | Trivy suppression file |
 | `OSV_IGNOREFILE` | `ci/suppress_osv_scanner.toml` | OSV-Scanner suppression file |
 | `TRIVY_SCA_SARIF_OUTPUT` | `sca-trivy-container.sarif` | Trivy image scan output |
@@ -69,7 +69,7 @@ options:
 | `SEMGREP_CONFIG_RULESETS` | `semgrep-rules/dockerfile` | OpenGrep ruleset(s) for the Dockerfile |
 | `OPENGREP_SAST_SARIF_OUTPUT` | `sast-opengrep-dockerfile.sarif` | OpenGrep Dockerfile scan output |
 | `HADOLINT_SAST_SARIF_OUTPUT` | `sast-hadolint-dockerfile.sarif` | Hadolint output |
-| `CONTAINER_SCAN_MERGED_SARIF_OUTPUT` | `container-scan-<service>-merged.sarif` | Combined artifact of all four SARIF files |
+| `MERGED_SARIF_OUTPUT` | `container-scan-<service>-merged.sarif` | Combined artifact of all four SARIF files |
 
 ## Running it locally
 
@@ -129,7 +129,7 @@ jobs:
       security-events: write
     env:
       IMAGE_NAME: <service>:testing
-      CONTAINER_SCAN_MERGED_SARIF_OUTPUT: container-scan-<service>-merged.sarif
+      MERGED_SARIF_OUTPUT: container-scan-<service>-merged.sarif
       TRIVY_IGNOREFILE: ci/suppress_trivy.yaml
       OSV_IGNOREFILE: ci/suppress_osv_scanner.toml
       TRIVY_SCA_SARIF_OUTPUT: sca-trivy-container.sarif
@@ -157,25 +157,25 @@ jobs:
         if: always()
         run: python ci/container_scan.py --scan-type sca --image ${{ env.IMAGE_NAME }}
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.TRIVY_SCA_SARIF_OUTPUT }}
           category: trivy-container-scanning
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OSV_SCA_SARIF_OUTPUT }}
           category: osv-scanner-container-scanning
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OPENGREP_SAST_SARIF_OUTPUT }}
           category: opengrep-sast
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.HADOLINT_SAST_SARIF_OUTPUT }}
@@ -186,19 +186,20 @@ jobs:
         run: |
           python ci/container_scan.py \
             --merge-sarif "${{ env.TRIVY_SCA_SARIF_OUTPUT }}" "${{ env.OSV_SCA_SARIF_OUTPUT }}" "${{ env.OPENGREP_SAST_SARIF_OUTPUT }}" "${{ env.HADOLINT_SAST_SARIF_OUTPUT }}" \
-            --merge-output "${{ env.CONTAINER_SCAN_MERGED_SARIF_OUTPUT }}"
+            --merge-output "${{ env.MERGED_SARIF_OUTPUT }}"
 
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: container-scan-sarif-report
-          path: ${{ env.CONTAINER_SCAN_MERGED_SARIF_OUTPUT }}
+          path: ${{ env.MERGED_SARIF_OUTPUT }}
           retention-days: 30
 ```
 
-> **Note on Action versions:** pin every `uses:` to a full commit SHA in a
-> real workflow rather than the floating `@v7`-style tags shown here for
-> readability, see [platform-ui.md](../case-studies/platform-ui.md) and
+> **Note on Action versions:** the `@v4`/`@v7`-style tags here are for
+> readability. Pin every `uses:` to a full commit SHA in a real workflow, and
+> check the tag is still current before you do, a major version can be
+> retired under you, see [platform-ui.md](../case-studies/platform-ui.md) and
 > [platform-backend.md](../case-studies/platform-backend.md) for real,
 > SHA-pinned examples.
 >
