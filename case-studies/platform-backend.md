@@ -92,12 +92,28 @@ resulting workflow, and
 [explanation/why-sboms.md](../explanation/why-sboms.md) for the general
 explanation this case study is the evidence for.
 
+### Encrypted SARIF artifacts
+
+The live workflow does not upload the merged SARIF in the clear. Between the
+scan step and the upload step it encrypts the report with `gpg --symmetric`
+under an `ARTIFACT_PASSWORD` repository secret, deletes the plaintext, and
+uploads only the `.gpg`. Runs that do not receive the secret, Dependabot,
+Renovate and fork pull requests, log a warning and upload nothing.
+
+This repository is public, so its workflow artifacts are downloadable by any
+signed-in GitHub user, while Security tab alerts need write access. The
+encryption closes that gap. It is optional and applies to all three
+pipelines here, see
+[how-to/encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md).
+
 ## Code snapshot: `platform-backend`'s actual `sca.yml`
 
-This is a trimmed version of the real, currently-running workflow (Action
-`uses:` pins shortened for readability; the live file pins full commit
-SHAs, see [tool-installation-flags.md](../reference/tool-installation-flags.md)
-for why). It's the concrete instance of the
+This is a trimmed version of the real, currently-running workflow. Action
+`uses:` pins are shortened for readability, the live file pins full commit
+SHAs, see
+[tool-installation-flags.md](../reference/tool-installation-flags.md) for
+why. The artifact encryption steps described above are also omitted here, to
+keep the ecosystem comparison below readable. It's the concrete instance of the
 [generic SCA template](../reference/pipeline-sca.md#generic-github-actions-template),
 with the Maven block filled in:
 

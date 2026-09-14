@@ -48,12 +48,14 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [suppress-a-finding.md](how-to/suppress-a-finding.md)
   - [adjust-severity-gate.md](how-to/adjust-severity-gate.md)
   - [add-new-scanner.md](how-to/add-new-scanner.md)
+  - [encrypt-sarif-artifacts.md](how-to/encrypt-sarif-artifacts.md), optional, for a public repository whose findings are sensitive
   - [troubleshooting.md](how-to/troubleshooting.md)
 - **reference/**
   - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `reusable-ci-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
   - [pipeline-container-scanning.md](reference/pipeline-container-scanning.md)
   - [pipeline-sca.md](reference/pipeline-sca.md)
   - [pipeline-sast.md](reference/pipeline-sast.md)
+  - [pipeline-secret-scanning.md](reference/pipeline-secret-scanning.md), MIP-only, working tree not git history
   - [python-orchestrators.md](reference/python-orchestrators.md)
   - [tool-installation-flags.md](reference/tool-installation-flags.md)
   - [exit-codes.md](reference/exit-codes.md)
@@ -93,15 +95,28 @@ here as a reusable, ecosystem-agnostic secure-pipeline blueprint.
 
 ## What is actually implemented
 
-Three independent GitHub Actions pipelines, each following the OWASP
-DevSecOps model, each with its own workflow file, orchestrator script, and
-gate:
+Three independent, reusable GitHub Actions pipelines, each following the
+OWASP DevSecOps model, each with its own workflow file, orchestrator script,
+and gate:
 
 | Pipeline | Scans | Tools |
 |---|---|---|
-| **Container Scanning** | The built Docker image + the Dockerfile itself | Trivy, OSV-Scanner (image CVEs); Hadolint, OpenGrep (Dockerfile SAST) |
+| **Container Scanning** | The built Docker image and the Dockerfile itself | Trivy, OSV-Scanner for image CVEs, Hadolint and OpenGrep for the Dockerfile |
 | **SCA** (Software Composition Analysis) | Application dependencies, via a generated SBOM (CycloneDX) | Trivy, OSV-Scanner |
 | **SAST** (Static Application Security Testing) | Application source code | OpenGrep |
+
+Plus one pipeline that runs on the MIP components only and is **not** part
+of the reusable blueprint:
+
+| Pipeline | Scans | Tool | Why it is separate |
+|---|---|---|---|
+| **Secret Scanning** | The checked-out working tree, **not** git history | Gitleaks | Deliberately minimal, no orchestrator and no shared gate. It covers a DSOMM control on MIP rather than being something other projects should copy. See [reference/pipeline-secret-scanning.md](reference/pipeline-secret-scanning.md) |
+
+`platform-backend` and `platform-ui` also encrypt their SARIF workflow
+artifacts, because both repositories are public and a findings report is a
+list of exactly which CVEs are unpatched. That is optional and separate from
+the pipelines themselves, see
+[how-to/encrypt-sarif-artifacts.md](how-to/encrypt-sarif-artifacts.md).
 
 See [reference/pipeline-container-scanning.md](reference/pipeline-container-scanning.md),
 [reference/pipeline-sca.md](reference/pipeline-sca.md), and
@@ -159,6 +174,7 @@ for why a fourth independent pipeline is the natural shape.
 
 | Limitation | Notes |
 |---|---|
+| Secret scanning misses git history | `gitleaks dir .` walks the working tree. A secret committed and later removed stays in history and is not reported. A history sweep is separate work. |
 | Four SBOM ecosystems only | `maven`, `npm`, `golang`, and the `generic` Trivy filesystem fallback. Anything else needs a new branch, see [how-to/integrate-a-new-ecosystem.md](how-to/integrate-a-new-ecosystem.md). |
 | Linux x86_64 only for the native path | `setup-tools.sh` downloads amd64 assets. The dockerized blueprint path covers other hosts. |
 | No composite action | Composite actions were prototyped for all three pipelines and dropped, so that a workflow file stays readable top to bottom. The cost is that vendored copies of `ci/` drift and have to be re-copied to pick up improvements. |

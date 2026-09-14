@@ -4,6 +4,11 @@ Container Scanning, SCA, and SAST are three separate GitHub Actions
 workflow files, each with its own orchestrator script and its own gate,
 rather than one combined "security" workflow.
 
+(The MIP components run a fourth workflow, Gitleaks secret scanning, which
+follows the same one-workflow-per-concern shape but is not part of the
+reusable blueprint, see
+[reference/pipeline-secret-scanning.md](../reference/pipeline-secret-scanning.md).)
+
 ## What each one actually scans
 
 | Pipeline | Scans | Doesn't scan |
