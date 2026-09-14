@@ -69,8 +69,8 @@ volume of requests from a single CI-runner IP as abuse. This is
 documented, with Trivy's own recommended mitigation
 (`--offline-scan`), in
 [how-to/troubleshooting.md](../how-to/troubleshooting.md).
-This is also part of why `mvn dependency:resolve` runs as its own explicit
-CI step ahead of SBOM generation, see
+This is also part of why `mvn dependency:resolve` runs ahead of SBOM
+generation at all, see
 [reference/pipeline-sca.md](../reference/pipeline-sca.md), rather than
 letting Trivy resolve artifacts on demand during the scan itself.
 
@@ -78,8 +78,9 @@ letting Trivy resolve artifacts on demand during the scan itself.
 
 - SCA scans the generated SBOM (`target/bom.json`), not the raw
   dependency cache, for every ecosystem, not just Maven.
-- `mvn dependency:resolve -q` runs as an explicit, separate CI step before
-  SBOM generation.
+- `mvn dependency:resolve` runs before SBOM generation, inside
+  `setup-tools.sh`'s `maven` branch rather than as a separate workflow step,
+  so a local run resolves exactly the way CI does.
 - Both Trivy and OSV-Scanner run against the SBOM, gated through the
   shared `parse_sarif.evaluate()` CVSS-score model.
 - The `~/.m2/repository` cache (not the whole `~/.m2` directory, which

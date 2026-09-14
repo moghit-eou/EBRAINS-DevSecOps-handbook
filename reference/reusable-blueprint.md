@@ -4,8 +4,8 @@ The pipelines documented in this handbook exist in two forms:
 
 | Form | Where | Who uses it |
 |---|---|---|
-| **Vendored** | `ci/` copied into a consuming repository, driven by that repository's own workflow files | `platform-backend`, `platform-ui`, and any project adopting the pipelines |
-| **Blueprint** | [`DevSecOps-CI-pipelines`](https://github.com/moghit-eou/DevSecOps-CI-pipelines), the standalone artifact submitted for publication | Reference implementation, test bed, and the thing you copy `ci/` from |
+| **Vendored** | `ci/` copied into a consuming repository, driven by that repository's own workflow files | `platform-backend`, `platform-ui`, `datacatalog`, and any project adopting the pipelines |
+| **Blueprint** | [`reusable-ci-pipelines`](https://github.com/moghit-eou/reusable-ci-pipelines), the standalone artifact submitted for publication | Reference implementation, test bed, and the thing you copy `ci/` from |
 
 Both run the same `ci/` scripts with the same pinned tool versions. The
 blueprint adds a local Docker path so the pipelines can run without
@@ -14,7 +14,7 @@ installing any scanner on the host.
 ## What the blueprint adds
 
 ```
-DevSecOps-CI-pipelines/
+reusable-ci-pipelines/
 ├── Makefile          # make sast | sca | container-scan
 ├── toolbox.sh        # builds and runs the Docker toolbox images
 ├── ci/               # identical to the vendored ci/ folder
@@ -22,9 +22,16 @@ DevSecOps-CI-pipelines/
 │       ├── Dockerfile      # three toolbox images from one shared installer stage
 │       ├── entrypoints/
 │       └── env/            # sast.env | sca.env | container-scan.env
+├── docs/                   # operational guides: CI, local runs, configuration,
+│                           # suppressions, adding an ecosystem, tool choices
 ├── .github/workflows/      # the three pipelines, scanning the test targets
 └── test-*/                 # sample projects in several ecosystems
 ```
+
+The blueprint's own `README.md` and `docs/` are written for an adopter who
+has never heard of EBRAINS or MIP, so that repository stands on its own.
+This handbook is the EBRAINS-facing companion, not a prerequisite for using
+it.
 
 `Makefile` and `toolbox.sh` are blueprint-only. Nothing in `ci/` depends on
 them, which is why a consuming repository can vendor `ci/` and ignore the
@@ -96,7 +103,7 @@ reference platform and the one CI runs on.
 |---|---|
 | Linux, x86_64 | Tested |
 | Windows with WSL2 | Tested, follow the Linux instructions inside the distribution |
-| macOS | Not tested |
+| macOS | Not tested. Docker Desktop should work, on Apple Silicon under emulation |
 
 The scanners in `ci/setup-tools.sh` are x86-64 Linux binaries, so
 `toolbox.sh` builds and runs every image with `--platform linux/amd64`. On

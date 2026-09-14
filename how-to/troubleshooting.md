@@ -86,8 +86,9 @@ The CycloneDX Maven plugin builds the SBOM from Maven's **resolved**
 dependency tree. If `mvn dependency:resolve` hasn't run first (or failed
 silently), there's nothing resolved for the plugin to read. Confirm the
 resolve step succeeded and populated `~/.m2/repository` before generating
-the SBOM, this is why `sca.yml` runs `mvn dependency:resolve -q` as its own
-step, before `setup-tools.sh --sbom-ecosystem maven`, see
+the SBOM. The `maven` branch of `setup-tools.sh` runs
+`mvn -B -ntp -C dependency:resolve -q` immediately before the CycloneDX
+plugin for exactly this reason, see
 [reference/pipeline-sca.md](../reference/pipeline-sca.md).
 
 If the resulting SBOM contains a version you didn't expect, that's

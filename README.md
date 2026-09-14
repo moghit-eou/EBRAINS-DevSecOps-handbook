@@ -30,8 +30,9 @@ depends on a specific CI provider or a specific build ecosystem. See
   install script (`setup-tools.sh`) downloads amd64 release assets and is
   not portable as-is to native Windows. WSL2 works, because it provides a
   real Linux userspace. The dockerized toolchain in the blueprint
-  repository closes most of this gap, including macOS, though on Apple
-  Silicon the images run under emulation. See
+  repository should close most of this gap, macOS included, though that has
+  not been tested and on Apple Silicon the images would run under emulation.
+  See
   [reference/tool-installation-flags.md](reference/tool-installation-flags.md)
   for the full platform table.
 
@@ -49,7 +50,7 @@ depends on a specific CI provider or a specific build ecosystem. See
   - [add-new-scanner.md](how-to/add-new-scanner.md)
   - [troubleshooting.md](how-to/troubleshooting.md)
 - **reference/**
-  - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `DevSecOps-CI-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
+  - [reusable-blueprint.md](reference/reusable-blueprint.md), the standalone `reusable-ci-pipelines` repository, its `make` interface, and where it deliberately differs from a vendored setup
   - [pipeline-container-scanning.md](reference/pipeline-container-scanning.md)
   - [pipeline-sca.md](reference/pipeline-sca.md)
   - [pipeline-sast.md](reference/pipeline-sast.md)
@@ -85,8 +86,10 @@ as the implementation reference.
 The outcome is a working reference pipeline that produces security
 artifacts automatically (scan reports, SBOMs, gate decisions), proven
 against two MIP components with different stacks (`platform-backend`,
-Maven/Java; `platform-ui`, npm/Angular) plus their container images, and
-packaged here as a reusable, ecosystem-agnostic secure-pipeline blueprint.
+Maven/Java, and `platform-ui`, npm/Angular) plus their container images,
+then adopted into a third repository it was not designed around
+(`datacatalog`, three services and three package managers), and packaged
+here as a reusable, ecosystem-agnostic secure-pipeline blueprint.
 
 ## What is actually implemented
 
@@ -122,8 +125,8 @@ same pinned tool versions:
 
 | Form | What it is |
 |---|---|
-| **Vendored** | `ci/` copied into a consuming repository, called from that repository's own workflow files. This is what `platform-backend` and `platform-ui` run. |
-| **Blueprint** | [`DevSecOps-CI-pipelines`](https://github.com/moghit-eou/DevSecOps-CI-pipelines), a standalone repository that adds a `make` and Docker path so the pipelines run with no scanner installed on the host. |
+| **Vendored** | `ci/` copied into a consuming repository, called from that repository's own workflow files. This is what `platform-backend`, `platform-ui` and `datacatalog` run. |
+| **Blueprint** | [`reusable-ci-pipelines`](https://github.com/moghit-eou/reusable-ci-pipelines), a standalone repository that adds a `make` and Docker path so the pipelines run with no scanner installed on the host. |
 
 The blueprint is the citable artifact, see
 [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md). The vendored form
