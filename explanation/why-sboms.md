@@ -37,20 +37,23 @@ declared version as if it were actually used in the build, even when
 Maven's own conflict resolution overrode that version somewhere else. 
 
 **Concrete example, encountered directly during testing:**
+
 - The project depends on `micrometer-core 1.16.5`.
 - Inside micrometer's own POM, it declares `tomcat-embed-core 8.5.100` as
-`micrometer-core` / `tomcat-embed-core` case, with the actual finding
   one of its dependencies. That's micrometer's declaration, not the
-counts observed at each scan scope), see
   project's.
-[case-studies/platform-backend.md](../case-studies/platform-backend.md#the-starting-problem),
 - The project also declares `tomcat.version 11.0.22` directly.
-this page stays at the mechanism level; the case study is where the
 - A scanner reading `~/.m2` sees the POM-declared `8.5.100` and flags it
-evidence lives.
   as vulnerable, a version the project never actually ships.
 - Maven itself resolves the conflict at build time and picks `11.0.22`.
   `8.5.100` never ends up in the actual built application at all.
+
+For the named, evidence-backed version of this (the same `micrometer-core`
+/ `tomcat-embed-core` case, with the actual finding counts observed at each
+scan scope), see
+[case-studies/platform-backend.md](../case-studies/platform-backend.md#the-starting-problem).
+This page stays at the mechanism level; the case study is where the
+evidence lives.
 
 ## How Maven resolves version conflicts
 

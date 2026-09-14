@@ -158,7 +158,7 @@ project onto a package manager if reliable SCA coverage matters.
 project (which may not even have a `requirements.txt`) either fails or
 produces an incomplete SBOM. Match the subcommand to how the project
 actually declares dependencies, see
-[integrate-a-new-ecosystem.md](integrate-a-new-ecosystem.md#python).
+[integrate-a-new-ecosystem.md](integrate-a-new-ecosystem.md#adding-a-new-ecosystem-not-in-the-matrix).
 
 ### Both ecosystems: SBOM step succeeds but scanners still report old data
 

@@ -11,8 +11,9 @@ The script downloads **Linux x86_64** release assets, matching the
 detected at runtime, so the asset URLs are fixed.
 
 The dockerized path in the blueprint repository closes most of this gap,
-because the container is Linux regardless of the host.See
-[reference/reusable-blueprint.md](reusable-blueprint.md) and
+because the container is Linux regardless of the host. See
+[reusable-blueprint.md](reusable-blueprint.md) for the `make` interface and
+the full platform table.
 
 ## Flags
 

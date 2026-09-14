@@ -5,7 +5,7 @@ SCA, and SAST into any repository, regardless of build tool or language.
 
 Maven, npm, and Go are the ecosystems the pipelines actually run in
 production and in CI. Anything else plugs into the same pattern, see
-[Adding a new ecosystem](#adding-a-new-ecosystem).
+[Adding a new ecosystem](#adding-a-new-ecosystem-not-in-the-matrix).
 
 ## What actually changes per ecosystem
 
@@ -263,9 +263,9 @@ jobs:
 
 `sast.yml` and `container-scan.yml` need no ecosystem-specific block beyond
 the `SEMGREP_CONFIG_RULESETS` and `OPENGREP_EXCLUDE` values, see
-[pipeline-sast.md](../reference/pipeline-sast.md#ruleset-configuration-by-repository).
+[pipeline-sast.md](../reference/pipeline-sast.md#choosing-semgrep_config_rulesets-for-a-new-repository).
 
-## Adding a new ecosystem
+## Adding a new ecosystem not in the matrix
 
 1. Try `--sbom-ecosystem generic` first. If Trivy already parses your
    lockfile, you may need no new code at all.

@@ -70,6 +70,7 @@ depends on a specific CI provider or a specific build ecosystem. See
 - **case-studies/**
   - [platform-backend.md](case-studies/platform-backend.md)
   - [platform-ui.md](case-studies/platform-ui.md)
+  - [datacatalog.md](case-studies/datacatalog.md) — adopting the pipelines into a repository the handbook had never seen, three services and three package managers in one repo
 
 ## Why this exists
 
@@ -109,10 +110,11 @@ GitHub Security tab) lives in
 [explanation/why-three-independent-pipelines.md](explanation/why-three-independent-pipelines.md#independent-triggers-and-parallel-execution)
 rather than being repeated here.
 
-All three workflows trigger independently and run in parallel; each
-uploads its own SARIF category to the Security tab, see
-[reference/exit-codes.md](reference/exit-codes.md) for the full category
-list.
+All three workflows trigger independently and run in parallel; each uploads
+its own SARIF category to the Security tab. The categories each pipeline
+uses are listed in its own reference page above, and
+[reference/exit-codes.md](reference/exit-codes.md) covers what each
+resulting status means.
 
 ## Two forms of the same pipelines
 
@@ -186,8 +188,9 @@ content there later, if that path is chosen, needs minimal rework:
 - Want to understand *why* the pipelines are built this way: go to
   [explanation/](explanation/).
 - Want the concrete, named story of how this was built and validated
-  against `platform-backend` (Maven) and `platform-ui` (npm): read
-  [case-studies/](case-studies/).
+  against `platform-backend` (Maven) and `platform-ui` (npm), or how it was
+  then adopted into a third repository it had never been designed around
+  (`datacatalog`): read [case-studies/](case-studies/).
 
 ## Relationship to OWASP
 
