@@ -157,25 +157,25 @@ jobs:
         if: always()
         run: python ci/container_scan.py --scan-type sca --image ${{ env.IMAGE_NAME }}
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.TRIVY_SCA_SARIF_OUTPUT }}
           category: trivy-container-scanning
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OSV_SCA_SARIF_OUTPUT }}
           category: osv-scanner-container-scanning
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OPENGREP_SAST_SARIF_OUTPUT }}
           category: opengrep-sast
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.HADOLINT_SAST_SARIF_OUTPUT }}
@@ -196,9 +196,10 @@ jobs:
           retention-days: 30
 ```
 
-> **Note on Action versions:** pin every `uses:` to a full commit SHA in a
-> real workflow rather than the floating `@v7`-style tags shown here for
-> readability, see [platform-ui.md](../case-studies/platform-ui.md) and
+> **Note on Action versions:** the `@v4`/`@v7`-style tags here are for
+> readability. Pin every `uses:` to a full commit SHA in a real workflow, and
+> check the tag is still current before you do, a major version can be
+> retired under you, see [platform-ui.md](../case-studies/platform-ui.md) and
 > [platform-backend.md](../case-studies/platform-backend.md) for real,
 > SHA-pinned examples.
 >

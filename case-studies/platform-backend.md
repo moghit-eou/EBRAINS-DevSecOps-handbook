@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -154,14 +154,14 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
           category: trivy-app
 
       - name: Upload OSV Scanner SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
           category: osv-scanner-app

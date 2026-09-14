@@ -198,13 +198,13 @@ jobs:
       - name: Run SCA tools
         run: python ci/sca_scan.py
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
           category: trivy-app
 
-      - uses: github/codeql-action/upload-sarif@v2
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
@@ -219,9 +219,10 @@ jobs:
 ```
 
 > **Note on Action versions:** the reference implementations pin every
-> `uses:` to a full commit SHA (with a version comment), not a floating tag
-> like `@v7`. The `@v7`-style tags above are for readability in this
-> template only; pin to a SHA before using this in a real workflow. See
+> `uses:` to a full commit SHA with a version comment, not a floating tag.
+> The tags above are for readability in this template only. Pin to a SHA
+> before using this in a real workflow, and check the tag is still current
+> first, a major version can be retired under you. See
 > [platform-ui.md](../case-studies/platform-ui.md) and
 > [platform-backend.md](../case-studies/platform-backend.md) for real,
 > SHA-pinned examples.
