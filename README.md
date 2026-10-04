@@ -1,8 +1,16 @@
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/GSoC_logo.svg/500px-GSoC_logo.svg.png" height="100">
-  <img src="https://mip.ebrains.eu/img/mip-logo-short-compact.png" height="80">
-  <img src="https://www.flagera.eu/wp-content/uploads/2021/06/ebrains_logo_black.png__400x148_q85_crop_subsampling-2-300x111.png" height="80">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/GSoC_logo.svg/500px-GSoC_logo.svg.png" height="90" alt="Google Summer of Code">
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://www.incf.org/sites/default/files/incf_logo_grey.png" height="70" alt="INCF">
+  &nbsp;&nbsp;&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@ebrains/svgs@0.9.0/src/img/logo/2025/negative.svg">
+    <img src="https://cdn.jsdelivr.net/npm/@ebrains/svgs@0.9.0/src/img/logo/2025/positive.svg" height="55" alt="EBRAINS">
+  </picture>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://mip.ebrains.eu/img/mip-logo-short-compact.png" height="70" alt="Medical Informatics Platform">
 </p>
+
 
 # EBRAINS DevSecOps Handbook
 
