@@ -68,3 +68,18 @@ orchestrator does not treat it as "no findings." It's logged as:
 and the status is forced to `ERROR`, which fails the gate. This
 distinction matters: an absent report means the tool crashed or was
 misconfigured, not that the code is clean.
+
+## Reports from an earlier run
+
+A report left in the folder by an earlier run could otherwise pass that
+existence check and be gated and uploaded as if it were the current one,
+for example when a scanner crashes before writing its output during a
+local run. To rule this out, each scanner's previous report is removed
+before the tool starts (`remove_stale_report()` in `parse_sarif.py`,
+Hadolint's report file is emptied when it is opened for writing), so a
+report that exists after the run was written by this run. In Container
+Scanning, a missing OpenGrep report now gives `ERROR` too, the same as in
+the SAST pipeline.
+
+This is in the blueprint. Vendored copies get it when they are refreshed
+from it.

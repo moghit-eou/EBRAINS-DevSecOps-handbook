@@ -23,10 +23,8 @@ flowchart TD
     E --> G["run_osv_scanner(): osv-scanner scan source --lockfile target/bom.json"]
     F --> H["parse_sarif.evaluate()\nCVSS-score gate"]
     G --> H
-    H --> I["Upload Trivy SARIF\ncategory: trivy-app"]
-    H --> J["Upload OSV-Scanner SARIF\ncategory: osv-scanner-app"]
-    I --> K["Upload merged SARIF artifact"]
-    J --> K
+    H --> I["Upload merged SARIF\ncategory: sca-app"]
+    I --> K["Upload SARIF artifact\n(encryption optional)"]
 ```
 
 `sca_scan.py` itself has no ecosystem awareness at all, it only reads
@@ -93,7 +91,7 @@ is one concrete implementation of them:
 | 4 | Install / resolve dependencies | **Yes** | Runs inside `setup-tools.sh`'s `--sbom-ecosystem` branch, not as a separate workflow step. Only `generic` resolves nothing |
 | 5 | Install scanner tooling and generate the SBOM (`setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem <ecosystem>`) | No (parameterized) | Installs the two SCA binaries and generates `target/bom.json` |
 | 6 | Run the SCA scan (`python ci/sca_scan.py`) | No | Runs both tools against the SBOM, applies the CVSS-score gate |
-| 7 | Publish SARIF results and the report artifact | No | One category per tool, plus the merged artifact |
+| 7 | Publish SARIF results and the report artifact | No | One merged SARIF upload (category `sca-app`), plus the artifact. Encrypting the artifact is optional, see [encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md) |
 
 Because only steps 3 and 4 differ, onboarding a new ecosystem to this
 pipeline is a two-step change to the workflow file, not a rewrite, see
@@ -179,18 +177,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
-      # --- ecosystem-specific block: cache step (see Caching above for the canonical shape) + install command ---
+      # --- ecosystem-specific block: cache step only (see Caching above) ---
+      # setup-tools.sh resolves dependencies itself, no separate install step.
       # - name: Cache dependencies
       #   uses: actions/cache@v6
       #   with: { path: <ecosystem cache path>, key: ..., restore-keys: ... }
-
-      - name: Install / resolve dependencies
-        run: <ecosystem install command>
-      # ----------------------------------------------------------------------------------------
+      # ----------------------------------------------------------------------
 
       - name: Setup tools
         run: bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem <ecosystem>
@@ -198,20 +194,17 @@ jobs:
       - name: Run SCA tools
         run: python ci/sca_scan.py
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+      - name: Upload merged SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
-          category: trivy-app
+          sarif_file: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
+          category: sca-app
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
-          category: osv-scanner-app
-
-      - uses: actions/upload-artifact@v7
-        if: always()
+      # Optional: encrypt the report first, see how-to/encrypt-sarif-artifacts.md
+      - name: Upload SARIF artifact
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: sca-scan-sarif-report
           path: ${{ env.SCA_MERGED_SARIF_OUTPUT }}

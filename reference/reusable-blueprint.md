@@ -7,9 +7,14 @@ The pipelines documented in this handbook exist in two forms:
 | **Vendored** | `ci/` copied into a consuming repository, driven by that repository's own workflow files | `platform-backend`, `platform-ui`, `datacatalog`, and any project adopting the pipelines |
 | **Blueprint** | [`reusable-ci-pipelines`](https://github.com/moghit-eou/reusable-ci-pipelines), the standalone artifact submitted for publication | Reference implementation, test bed, and the thing you copy `ci/` from |
 
-Both run the same `ci/` scripts with the same pinned tool versions. The
-blueprint adds a local Docker path so the pipelines can run without
-installing any scanner on the host.
+Both are built on the same `ci/` scripts. The blueprint adds a local Docker
+path so the pipelines can run without installing any scanner on the host.
+
+A vendored `ci/` is a copy taken at one point in time, and the MIP
+repositories carry a simplified version with values written directly into
+the scripts. It does not follow the blueprint automatically: scripts and
+pinned tool versions drift until the copy is refreshed. The blueprint holds
+the current version.
 
 ## What the blueprint adds
 
@@ -17,13 +22,14 @@ installing any scanner on the host.
 reusable-ci-pipelines/
 ├── Makefile          # make sast | sca | container-scan
 ├── toolbox.sh        # builds and runs the Docker toolbox images
-├── ci/               # identical to the vendored ci/ folder
+├── ci/               # the current version of what consumers vendor
 │   └── docker/
 │       ├── Dockerfile      # three toolbox images from one shared installer stage
 │       ├── entrypoints/
 │       └── env/            # sast.env | sca.env | container-scan.env
 ├── docs/                   # operational guides: CI, local runs, configuration,
-│                           # suppressions, adding an ecosystem, tool choices
+│                           # suppressions, adding an ecosystem, tool choices,
+│                           # reproducibility
 ├── .github/workflows/      # the three pipelines, scanning the test targets
 └── test-*/                 # sample projects in several ecosystems
 ```

@@ -4,6 +4,8 @@ The three pipelines (SAST, SCA, Container Scanning) are each driven by a
 small Python script under `ci/`: `sast_scan.py`, `sca_scan.py`, and
 `container_scan.py`. This page shows their functions, how SCA scanning
 and SAST scanning are each handled, and where the three files overlap.
+The code shown is the blueprint's current version. A vendored copy may be
+older.
 
 ## Functions
 
@@ -11,6 +13,7 @@ and SAST scanning are each handled, and where the three files overlap.
 
 ```python
 def run_opengrep():
+    remove_stale_report(OPENGREP_SARIF_OUTPUT)
     base_cmd = ["opengrep", "scan"] + \
         [f"--config {config}" for config in SEMGREP_CONFIG_RULESETS] + \
         [f"--exclude={pattern}" for pattern in OPENGREP_EXCLUDE]
@@ -22,19 +25,26 @@ def run_opengrep():
     return subprocess.run(" ".join(gate_cmd).split()).returncode
 ```
 
-Runs OpenGrep twice with the same base command: once to write a full
-report, once with `--severity=ERROR --error` to check the gate. Only the
-gate run's exit code matters for pass or fail.
+Deletes the previous report first, then runs OpenGrep twice with the same
+base command: once to write a full report, once with
+`--severity=ERROR --error` to check the gate. Only the gate run's exit code
+matters for pass or fail. Every runner function that lets its tool write
+the report starts with `remove_stale_report()`. `run_hadolint()` does not
+need it: it opens the report for writing before Hadolint starts, which
+empties it. See
+[exit-codes.md](exit-codes.md#reports-from-an-earlier-run).
 
 ### `sca_scan.py`
 
 ```python
 def run_trivy():
+    remove_stale_report(TRIVY_SARIF_OUTPUT)
     cmd = ["trivy", "sbom", SBOM_PATH, "--format", "sarif",
            "--ignorefile", TRIVY_IGNOREFILE, "--output", TRIVY_SARIF_OUTPUT]
     return subprocess.run(cmd).returncode
 
 def run_osv_scanner():
+    remove_stale_report(OSV_SARIF_OUTPUT)
     cmd = ["osv-scanner", "scan", "source", "--lockfile", SBOM_PATH,
            "--config", OSV_IGNOREFILE, "--format", "sarif",
            "--output-file", OSV_SARIF_OUTPUT]
@@ -66,11 +76,13 @@ file, for the combined artifact. It plays no part in the gate decision.
 
 ```python
 def run_trivy():
+    remove_stale_report(TRIVY_SCA_SARIF_OUTPUT)
     cmd = ["trivy", "image", IMAGE_NAME, "--format", "sarif",
            "--ignorefile", TRIVY_IGNOREFILE, "--output", TRIVY_SCA_SARIF_OUTPUT]
     return subprocess.run(cmd).returncode
 
 def run_osv_scanner():
+    remove_stale_report(OSV_SCA_SARIF_OUTPUT)
     cmd = ["osv-scanner", "scan", "image", IMAGE_NAME,
            "--config", OSV_IGNOREFILE, "--format", "sarif",
            "--output-file", OSV_SCA_SARIF_OUTPUT]
@@ -85,12 +97,13 @@ one linter and one SAST scanner:
 
 ```python
 def run_hadolint():
-    cmd = ["hadolint", "Dockerfile", "--failure-threshold", "error", "--format", "sarif"]
+    cmd = ["hadolint", DOCKERFILE_PATH, "--failure-threshold", "error", "--format", "sarif"]
     with open(HADOLINT_SAST_SARIF_OUTPUT, "w") as f:
         result = subprocess.run(cmd, stdout=f)
     return result.returncode
 
 def run_opengrep():
+    remove_stale_report(OPENGREP_SAST_SARIF_OUTPUT)
     base_cmd = ["opengrep", "scan", "--include=Dockerfile", "-q"] + \
         [f"--config {config}" for config in SEMGREP_CONFIG_RULESETS]
     report_cmd = base_cmd + ["--sarif", "--output", OPENGREP_SAST_SARIF_OUTPUT]
@@ -128,6 +141,7 @@ steps are otherwise identical):
 
 ```
 for each tool (trivy, osv-scanner):
+    delete the tool's report from any earlier run
     run the tool, get exit_code
     if exit_code is not 0 but the tool still wrote a SARIF file:
         mark that tool ERROR (inconsistent, worth flagging on its own)
@@ -150,6 +164,7 @@ if any tool is FAILED or ERROR: exit with code 1
 In `sast_scan.py`, only OpenGrep runs, so this logic applies once:
 
 ```
+delete the report from any earlier run
 run OpenGrep, get exit_code
 if exit_code is 0: status = PASSED
 if exit_code is 1: status = FAILED
@@ -167,10 +182,13 @@ loop:
 
 ```
 for each tool (hadolint, opengrep):
+    delete the tool's report from any earlier run
     run the tool, get exit_code
     if exit_code is 0: status = PASSED
     if exit_code is 1: status = FAILED
     otherwise: status = ERROR
+
+if the OpenGrep SARIF file was not written: opengrep status = ERROR
 
 print the summary
 if any tool is not PASSED: exit with code 1

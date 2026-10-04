@@ -25,14 +25,14 @@ sequenceDiagram
     CI->>Docker: docker build -t IMAGE_NAME .
     CI->>Orc: --scan-type sast (Hadolint + OpenGrep on Dockerfile)
     Orc-->>CI: exit code
-    CI->>Orc: --scan-type sca (Trivy + OSV-Scanner on built image), if: always()
+    CI->>Orc: --scan-type sca (Trivy + OSV-Scanner on built image), if: !cancelled()
     Orc-->>CI: exit code
-    CI->>Sec: upload-sarif (4 individual categories)
-    CI->>Orc: --merge-sarif (combine all 4 into one artifact)
-    CI->>Sec: upload merged artifact (retention 30 days)
+    CI->>Orc: --merge-sarif (combine all 4 into one file)
+    CI->>Sec: upload-sarif (one merged upload, category: container-scan)
+    Note over CI: upload the merged file as an artifact (encryption optional)
 ```
 
-The SCA-type run executes with `if: always()`, so it still runs even if
+The SCA-type run executes with `if: ${{ !cancelled() }}`, so it still runs even if
 the Dockerfile SAST step failed. This means a bad Dockerfile lint does not
 prevent the image itself from being scanned for CVEs in the same job.
 
@@ -99,9 +99,9 @@ run them:
 | 4 | Install scanner tooling (`setup-tools.sh --install-tool trivy,osv-scanner,opengrep,hadolint,semgrep-rules`) | Installs all four scanner binaries in one step |
 | 5 | Run the Dockerfile SAST scan (`container_scan.py --scan-type sast`) | Hadolint + OpenGrep against the `Dockerfile` |
 | 6 | Run the image SCA scan (`container_scan.py --scan-type sca`), always | Trivy + OSV-Scanner against the built image, runs even if step 5 failed |
-| 7 | Publish SARIF results to the code-scanning tool (x4) | One category per tool output, see [SARIF upload categories](#sarif-upload-categories) |
-| 8 | Merge all SARIF reports (`container_scan.py --merge-sarif ...`), always | Combines all four SARIF files into one artifact |
-| 9 | Publish the merged report as a CI artifact, always | Publishes the merged artifact, 30-day retention |
+| 7 | Merge all SARIF reports (`container_scan.py --merge-sarif ...`), unless cancelled | Combines all four SARIF files into one |
+| 8 | Publish the merged SARIF to the code-scanning tool | One upload, one category, see [SARIF upload category](#sarif-upload-category) |
+| 9 | Publish the merged report as a CI artifact | 30-day retention. Encryption is optional, see [encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md) |
 
 
 ## Generic GitHub Actions template
@@ -140,9 +140,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
       - name: Build Docker image
         run: docker build -t ${{ env.IMAGE_NAME }} .
@@ -154,42 +154,27 @@ jobs:
         run: python ci/container_scan.py --scan-type sast
 
       - name: Run SCA scanning (image)
-        if: always()
+        if: ${{ !cancelled() }}
         run: python ci/container_scan.py --scan-type sca --image ${{ env.IMAGE_NAME }}
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.TRIVY_SCA_SARIF_OUTPUT }}
-          category: trivy-container-scanning
-
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.OSV_SCA_SARIF_OUTPUT }}
-          category: osv-scanner-container-scanning
-
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.OPENGREP_SAST_SARIF_OUTPUT }}
-          category: opengrep-sast
-
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.HADOLINT_SAST_SARIF_OUTPUT }}
-          category: hadolint-sast
-
       - name: Merge all SARIF reports
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           python ci/container_scan.py \
             --merge-sarif "${{ env.TRIVY_SCA_SARIF_OUTPUT }}" "${{ env.OSV_SCA_SARIF_OUTPUT }}" "${{ env.OPENGREP_SAST_SARIF_OUTPUT }}" "${{ env.HADOLINT_SAST_SARIF_OUTPUT }}" \
             --merge-output "${{ env.MERGED_SARIF_OUTPUT }}"
 
-      - uses: actions/upload-artifact@v7
-        if: always()
+      - name: Upload merged SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.MERGED_SARIF_OUTPUT) != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ env.MERGED_SARIF_OUTPUT }}
+          category: container-scan
+
+      # Optional: encrypt the report first, see how-to/encrypt-sarif-artifacts.md
+      - name: Upload SARIF artifact
+        if: ${{ !cancelled() && hashFiles(env.MERGED_SARIF_OUTPUT) != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: container-scan-sarif-report
           path: ${{ env.MERGED_SARIF_OUTPUT }}
@@ -209,17 +194,12 @@ jobs:
 > project doesn't containerize (a library with no image, for example), this
 > pipeline simply doesn't apply, run SCA and SAST only.
 
-## SARIF upload categories
+## SARIF upload category
 
-Each SARIF file uploads under its own category, to avoid GitHub's
-Code Scanning upload rejecting duplicate categories from the same job:
-
-| Tool output | Category |
-|---|---|
-| `TRIVY_SCA_SARIF_OUTPUT` | `trivy-container-scanning` |
-| `OSV_SCA_SARIF_OUTPUT` | `osv-scanner-container-scanning` |
-| `OPENGREP_SAST_SARIF_OUTPUT` | `opengrep-sast` |
-| `HADOLINT_SAST_SARIF_OUTPUT` | `hadolint-sast` |
+The four SARIF files are merged into `MERGED_SARIF_OUTPUT` and uploaded
+once, under the category `container-scan`. Each tool stays a separate run
+inside the merged file, so the Security tab still shows which tool reported
+each finding.
 
 See also: [why-three-independent-pipelines.md](../explanation/why-three-independent-pipelines.md),
 [why-these-tools.md](../explanation/why-these-tools.md).

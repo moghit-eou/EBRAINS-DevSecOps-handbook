@@ -110,9 +110,9 @@ actually used, and only the latter is safe to scan.
 
 Testing against `platform-backend` compared three different scan scopes
 directly, correct SBOM-equivalent scope vs. two wider (and worse) scopes.
-The full numbers and the follow-up Trivy-vs-OSV-Scanner comparison are in
+The full numbers are in
 [case-studies/platform-backend.md](../case-studies/platform-backend.md#the-starting-problem)
-rather than repeated here; the short version is that widening scope beyond
+rather than repeated here. The short version is that widening scope beyond
 what the SBOM would contain made false positives worse, not better, in
 every direction tried.
 

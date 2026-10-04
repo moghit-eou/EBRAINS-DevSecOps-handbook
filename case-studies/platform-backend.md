@@ -108,7 +108,8 @@ pipelines here, see
 
 ## Code snapshot: `platform-backend`'s actual `sca.yml`
 
-This is a trimmed version of the real, currently-running workflow. Action
+This is a trimmed version of the live
+[`sca.yml`](https://github.com/Medical-Informatics-Platform/platform-backend/blob/master/.github/workflows/sca.yml). Action
 `uses:` pins are shortened for readability, the live file pins full commit
 SHAs, see
 [tool-installation-flags.md](../reference/tool-installation-flags.md) for
@@ -140,17 +141,19 @@ jobs:
       TRIVY_SARIF_OUTPUT: trivy-platform-backend.sarif
       OSV_SARIF_OUTPUT: osv-scanner-platform-backend.sarif
       SCA_MERGED_SARIF_OUTPUT: SCA-platform-backend-merged.sarif
+      GATE_FAIL_THRESHOLD: "8.0"
+      GATE_WARN_THRESHOLD: "5.0"
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
-      # --- the Maven-specific block; this is the only part that differs from platform-ui's npm version ---
+      # --- the Maven-specific block, differs from platform-ui's npm version (with the --sbom-ecosystem value) ---
       - name: Cache Maven packages
         uses: actions/cache@v6
         with:
@@ -163,38 +166,27 @@ jobs:
 
       # -------------------------------------------------------------------------------------------------------
 
-      - name: Setup tools
+      - name: Setup tools and generate SBOM
         run: bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem maven
 
       - name: Run SCA tools
         run: python ci/sca_scan.py
 
-      - name: Upload Trivy SARIF to GitHub Security tab
-        if: always()
+      - name: Upload merged SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
-          category: trivy-app
+          sarif_file: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
+          category: sca-app
 
-      - name: Upload OSV Scanner SARIF to GitHub Security tab
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
-          category: osv-scanner-app
-
-      - name: Upload SARIF artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: sca-scan-sarif-report
-          path: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
-          retention-days: 30
+      # Then "Encrypt SARIF report" and "Upload encrypted SARIF artifact",
+      # see Encrypted SARIF artifacts above and the live file.
 ```
 
 Compare this to
 [`platform-ui`'s npm version](platform-ui.md#code-snapshot-platform-uis-actual-scayml):
-every step outside the marked Maven block is byte-for-byte identical. This
+every step outside the marked Maven block is the same, apart from the
+`--sbom-ecosystem` value and action pin versions. This
 is the concrete proof, not just the claim, behind
 [integrate-a-new-ecosystem.md](../how-to/integrate-a-new-ecosystem.md)'s
 statement that only the cache step and the install/resolve command change
