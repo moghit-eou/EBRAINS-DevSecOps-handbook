@@ -120,6 +120,31 @@ On any error, the script stops and prints the failing line number and
 command, rather than continuing silently or failing with an unrelated
 downstream error.
 
+## What is not pinned
+
+The scanners above are pinned. The tools the script relies on to resolve
+dependencies are not: Java, Maven, Node, npm, Go and Docker come from the
+GitHub runner image in CI, or from the toolbox image's Ubuntu packages
+locally. In the blueprint, the script logs their versions before generating
+the SBOM, together with the runner image version:
+
+```text
+[setup-tools] Unpinned environment (follows the runner or image):
+  runner image: ubuntu24 <image version>
+  os: Ubuntu 24.04.x LTS
+  java: openjdk version "<version>"
+  maven: Apache Maven <version>
+  node: v<version>
+  ...
+```
+
+When a result changes between two runs with no code change, compare that
+block first. Vendored copies get it when they are refreshed from the
+blueprint. The full breakdown of what is pinned, what follows the runner,
+and what changes by design is the blueprint's
+[Reproducibility](https://github.com/moghit-eou/reusable-ci-pipelines/blob/main/docs/reproducibility.md)
+page.
+
 ## SBOM generation (`--sbom-ecosystem`)
 
 These are the `case` branches that exist in `setup-tools.sh` today. Every

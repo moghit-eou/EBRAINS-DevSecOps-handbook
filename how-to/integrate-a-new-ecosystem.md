@@ -210,6 +210,9 @@ declares rather than what the build resolves. See
 
 ## The generic `sca.yml` template
 
+A live example is
+[`platform-backend`'s `sca.yml`](https://github.com/Medical-Informatics-Platform/platform-backend/blob/master/.github/workflows/sca.yml).
+
 ```yaml
 name: Software Composition Analysis (SCA)
 
@@ -238,9 +241,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
       # --- ecosystem-specific: cache step only ---------------------------
       # No resolve step here, setup-tools.sh runs it in the
@@ -256,20 +259,17 @@ jobs:
       - name: Run SCA tools
         run: python ci/sca_scan.py
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+      - name: Upload merged SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
-          category: trivy-app
+          sarif_file: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
+          category: sca-app
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
-          category: osv-scanner-app
-
-      - uses: actions/upload-artifact@v7
-        if: always()
+      # Optional: encrypt the report first, see encrypt-sarif-artifacts.md
+      - name: Upload SARIF artifact
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: sca-scan-sarif-report
           path: ${{ env.SCA_MERGED_SARIF_OUTPUT }}

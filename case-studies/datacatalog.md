@@ -9,8 +9,8 @@ was picked afterwards to answer one question: can somebody take
 follow this handbook, and wire the three pipelines into a repository the
 handbook has never seen?
 
-Result: [pull request #1](https://github.com/moghit-eou/datacatalog/pull/1),
-10 files added, nothing removed, no existing workflow touched.
+Result: [pull request #18](https://github.com/Medical-Informatics-Platform/datacatalog/pull/18),
+merged on 1 Oct 2026. No existing workflow touched.
 
 ## The repository
 
@@ -26,7 +26,7 @@ Every earlier example scans a repository root. This one cannot.
 
 ## How it was adopted
 
-**1. Copied `ci/` in, unchanged.** All 7 files: `setup-tools.sh`,
+**1. Copied `ci/` in from the blueprint at that time.** All 7 files: `setup-tools.sh`,
 `sast_scan.py`, `sca_scan.py`, `container_scan.py`, `parse_sarif.py`, and
 the two suppression files.
 
@@ -305,7 +305,7 @@ it. See [adjust-severity-gate.md](../how-to/adjust-severity-gate.md).
 
 | Claim | Verdict |
 |---|---|
-| Vendoring `ci/` is a copy, no edits | Held, 7 files unchanged |
+| Vendoring `ci/` is a copy, no edits | Held, 7 files copied, one added `-q` flag in `sast_scan.py` |
 | Only `env:` values change per repository | Held |
 | Only the cache step and install command differ per ecosystem | Held |
 | `ci/docker/` is optional | Held |

@@ -25,7 +25,7 @@ flowchart TD
     G -->|0| H["PASSED"]
     G -->|1| I["FAILED"]
     G -->|other| J["ERROR"]
-    F --> K["Upload SARIF artifact\n(retained 30 days)"]
+    F --> K["Upload SARIF artifact\n(retained 30 days, encryption optional)"]
 ```
 
 Run 1 always writes the complete SARIF report, regardless of severity, so
@@ -96,9 +96,8 @@ is one concrete implementation of them:
 | 1 | Check out the repository | No | Standard source checkout |
 | 2 | Set up a Python runtime | No | The orchestrator (`sast_scan.py`) is Python |
 | 3 | Install scanner tooling (`setup-tools.sh --install-tool opengrep,semgrep-rules`) | No | Installs OpenGrep and clones the pinned `semgrep-rules` ruleset |
-| 4 | Run the SAST scan, report mode (`python ci/sast_scan.py`) | No | Writes the full SARIF report, every finding, any severity |
-| 5 | Run the SAST scan, gate mode (`python ci/sast_scan.py`) | No | Same scan, `--severity=ERROR --error`, decides pass/fail |
-| 6 | Publish SARIF results and the report artifact | No | One category (`semgrep-app`), plus the retained artifact |
+| 4 | Run the SAST scan (`python ci/sast_scan.py`) | No | One command, two OpenGrep runs: the report run writes the full SARIF, the gate run (`--severity=ERROR --error`) decides pass/fail |
+| 5 | Publish SARIF results and the report artifact | No | One category (`semgrep-app`), plus the artifact. Encryption is optional, see [encrypt-sarif-artifacts.md](../how-to/encrypt-sarif-artifacts.md) |
 
 There is no dependency-install step and no cache-restore step in this
 pipeline, OpenGrep reads source files directly; it never needs a resolved
@@ -139,9 +138,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
       - name: Setup tools
         run: bash ci/setup-tools.sh --install-tool opengrep,semgrep-rules
@@ -149,14 +148,17 @@ jobs:
       - name: Run SAST scan
         run: python ci/sast_scan.py
 
-      - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+      - name: Upload SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.OPENGREP_SARIF_OUTPUT) != '' }}
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ env.OPENGREP_SARIF_OUTPUT }}
           category: semgrep-app
 
-      - uses: actions/upload-artifact@v7
-        if: always()
+      # Optional: encrypt the report first, see how-to/encrypt-sarif-artifacts.md
+      - name: Upload SARIF artifact
+        if: ${{ !cancelled() && hashFiles(env.OPENGREP_SARIF_OUTPUT) != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: sast-scan-sarif-report
           path: ${{ env.OPENGREP_SARIF_OUTPUT }}
@@ -185,6 +187,9 @@ jobs:
 
 If the expected SARIF output file doesn't exist after the run, the status
 is forced to `ERROR` regardless of exit code, a missing report means the
-tool didn't actually run, not that it found nothing.
+tool didn't actually run, not that it found nothing. The previous report
+is deleted before OpenGrep starts, so an old file cannot stand in for a
+run that failed, see
+[exit-codes.md](exit-codes.md#reports-from-an-earlier-run).
 
 See also: [why-opengrep-not-semgrep.md](../explanation/why-opengrep-not-semgrep.md).

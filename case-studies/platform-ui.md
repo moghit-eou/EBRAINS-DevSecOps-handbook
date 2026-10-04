@@ -78,7 +78,8 @@ pipelines here, see
 
 ## Code snapshot: `platform-ui`'s actual `sca.yml`
 
-This is a trimmed version of the real, currently-running workflow. Action
+This is a trimmed version of the live
+[`sca.yml`](https://github.com/Medical-Informatics-Platform/platform-ui/blob/master/.github/workflows/sca.yml). Action
 `uses:` pins are shortened for readability, the live file pins full commit
 SHAs, see
 [tool-installation-flags.md](../reference/tool-installation-flags.md) for
@@ -110,17 +111,19 @@ jobs:
       TRIVY_SARIF_OUTPUT: trivy-platform-ui.sarif
       OSV_SARIF_OUTPUT: osv-scanner-platform-ui.sarif
       SCA_MERGED_SARIF_OUTPUT: SCA-platform-ui-merged.sarif
+      GATE_FAIL_THRESHOLD: "8.0"
+      GATE_WARN_THRESHOLD: "5.0"
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.14.4'
+          python-version: '3.14.7'
 
-      # --- the npm-specific block; this is the only part that differs from platform-backend's Maven version ---
+      # --- the npm-specific block, differs from platform-backend's Maven version (with the --sbom-ecosystem value) ---
       - name: Cache npm packages
         uses: actions/cache@v6
         with:
@@ -129,31 +132,19 @@ jobs:
           restore-keys: ${{ runner.os }}-npm-v1-
       # ----------------------------------------------------------------------------------------------------------
 
-      - name: Setup tools
+      - name: Setup tools and generate SBOM
         run: bash ci/setup-tools.sh --install-tool trivy,osv-scanner --sbom-ecosystem npm
 
       - name: Run SCA tools
         run: python ci/sca_scan.py
 
-      - name: Upload Trivy SARIF to GitHub Security tab
-        if: always()
+      - name: Upload merged SARIF to GitHub Security tab
+        if: ${{ !cancelled() && hashFiles(env.SCA_MERGED_SARIF_OUTPUT) != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: ${{ env.TRIVY_SARIF_OUTPUT }}
-          category: trivy-app
+          sarif_file: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
+          category: sca-app
 
-      - name: Upload OSV Scanner SARIF to GitHub Security tab
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ env.OSV_SARIF_OUTPUT }}
-          category: osv-scanner-app
-
-      - name: Upload SARIF artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: sca-scan-sarif-report
-          path: ${{ env.SCA_MERGED_SARIF_OUTPUT }}
-          retention-days: 30
+      # Then "Encrypt SARIF report" and "Upload encrypted SARIF artifact",
+      # see Encrypted SARIF artifacts above and the live file.
 ```

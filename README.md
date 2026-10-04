@@ -143,8 +143,7 @@ resulting status means.
 
 ## Two forms of the same pipelines
 
-The pipelines exist in two shapes, running the same `ci/` scripts with the
-same pinned tool versions:
+The pipelines exist in two shapes, built on the same `ci/` scripts:
 
 | Form | What it is |
 |---|---|
@@ -153,8 +152,10 @@ same pinned tool versions:
 
 The blueprint is the citable artifact, see
 [ABOUT-JOSS-PUBLICATION.md](ABOUT-JOSS-PUBLICATION.md). The vendored form
-is what a project actually adopts. For the interface, and for the places
-the two deliberately differ, see
+is what a project actually adopts. A vendored `ci/` is a copy taken at one
+point in time, often simplified for its maintainers, so it does not
+automatically match the blueprint's current scripts or tool versions. For
+the interface, and for the places the two deliberately differ, see
 [reference/reusable-blueprint.md](reference/reusable-blueprint.md).
 
 What lands in a consuming repository is kept deliberately plain: scripts
@@ -171,6 +172,7 @@ able to read a workflow file top to bottom and see every command it runs.
 | Software paper submission (JOSS or similar) | Prepared, date not yet fixed |
 | Infrastructure as Code (IaC) scanning pipeline | In progress, a fourth pipeline covering Terraform, Kubernetes manifests, Helm charts, and Compose files |
 | Published container image on a registry | Future work |
+| Review against the OWASP Top 10 CI/CD Security Risks and CI/CD Security Cheat Sheet | Future work, see [Relationship to OWASP](#relationship-to-owasp) |
 
 IaC scanning follows the existing architecture rather than extending an
 existing pipeline: its own workflow, its own orchestrator, its own gate,
@@ -187,6 +189,7 @@ for why a fourth independent pipeline is the natural shape.
 | Linux x86_64 only for the native path | `setup-tools.sh` downloads amd64 assets. The dockerized blueprint path covers other hosts. |
 | No composite action | Composite actions were prototyped for all three pipelines and dropped, so that a workflow file stays readable top to bottom. The cost is that vendored copies of `ci/` drift and have to be re-copied to pick up improvements. |
 | Vendored copies can drift | There is no automatic update from the blueprint into a consuming repository. |
+| Build tools are not pinned | The scanners are pinned by version and SHA256, but Java, Maven, Node, npm and Docker come from the runner or toolbox image, and vulnerability data changes daily. See [Reproducibility](https://github.com/moghit-eou/reusable-ci-pipelines/blob/main/docs/reproducibility.md) in the blueprint. |
 
 ## How this handbook is organized
 
@@ -205,6 +208,10 @@ content there later, if that path is chosen, needs minimal rework:
 
 ## Where to start
 
+- Just want to see the pipelines run: use the blueprint's
+  [Quick start](https://github.com/moghit-eou/reusable-ci-pipelines#quick-start),
+  for example `make sast PROJECT=./test-golang` (needs Docker and `make`),
+  or fork the blueprint and run its workflows from the Actions tab.
 - New to this and want to set up the tools locally: start with
   [tutorials/01-setup-guide.md](tutorials/01-setup-guide.md).
 - Onboarding a repository that isn't Maven or npm (Gradle, raw JavaScript,
@@ -226,9 +233,19 @@ content there later, if that path is chosen, needs minimal rework:
 
 ## Relationship to OWASP
 
-This project has an open pull request against the upstream OWASP
-DevSecOps Guideline. See
+This project has a pull request merged into the upstream OWASP
+DevSecOps Guideline (24 Sep 2026). See
 [ABOUT-OWASP-CONTRIBUTION.md](ABOUT-OWASP-CONTRIBUTION.md) for the full
 history and the still-open question of whether this handbook stays tied to
 the OWASP guide or becomes a standalone EBRAINS publication.
+
+The pipelines were built following the OWASP DevSecOps Guideline, which is
+about scanning the code. Two related OWASP documents cover securing the
+CI/CD system itself, the
+[OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+and the
+[OWASP CI/CD Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html).
+They were not used during this project. Some of the hardening already in
+place lines up with them (pinned scanners and actions, least-privilege
+workflow permissions). A full review against them is future work.
 

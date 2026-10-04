@@ -40,9 +40,9 @@ repository.
 | Component | Purpose |
 |---|---|
 | `Makefile`, `toolbox.sh` | Local entrypoint, runs each pipeline in its own Docker toolbox image |
-| `ci/` | The scanners' orchestrators, install script, and suppression files, identical to the vendored copy in a consuming repository |
+| `ci/` | The scanners' orchestrators, install script, and suppression files: the current version of what a consuming repository vendors |
 | `ci/docker/` | Three toolbox images built from one shared installer stage, so scanners and the Trivy database are downloaded once |
-| `docs/` | Operational guides for an adopter: CI, local runs, configuration, suppressions, adding an ecosystem, tool choices |
+| `docs/` | Operational guides for an adopter: CI, local runs, configuration, suppressions, adding an ecosystem, tool choices, reproducibility |
 | `.github/workflows/` | The three pipelines as plain workflow steps, also serving as the repository's own test suite |
 | `test-*/` | Sample projects in several ecosystems, exercised on every pull request |
 

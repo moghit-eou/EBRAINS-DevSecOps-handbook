@@ -47,6 +47,7 @@ dependencies, or a container image, not on the tool's name.
 
 ```python
 def run_newtool():
+    remove_stale_report(NEWTOOL_SARIF_OUTPUT)
     cmd = [
         "newtool", "scan",
         "--format", "sarif",
@@ -54,6 +55,10 @@ def run_newtool():
     ]
     return subprocess.run(cmd).returncode
 ```
+
+Call `remove_stale_report()` (from `parse_sarif.py`) first, so a report
+left by an earlier run cannot be mistaken for this run's output, see
+[exit-codes.md](../reference/exit-codes.md#reports-from-an-earlier-run).
 
 Then register it in the `tools` dict alongside the existing entries, so it
 participates in the same summary-printing and gate-evaluation loop.
@@ -73,26 +78,38 @@ Mixing the two models for one tool is what the upstream OWASP PR
 ([#107](https://github.com/OWASP/DevSecOpsGuideline/pull/107)) specifically
 argues against, keep them separate.
 
-## 4. Wire the SARIF upload in the workflow YAML
-
-```yaml
-- name: Upload NewTool SARIF to GitHub Security tab
-  id: upload_newtool
-  if: always()
-  uses: github/codeql-action/upload-sarif@<pinned-sha>
-  with:
-    sarif_file: ${{ env.NEWTOOL_SARIF_OUTPUT }}
-    category: newtool-<scan-type>
-```
-
-Use `if: always()` so the SARIF still uploads even if an earlier step in
-the job failed, that's how existing steps ensure a partial pipeline
-failure doesn't hide results. Give it a unique `category`, GitHub's Code
-Scanning upload treats duplicate categories from the same job as
-conflicting uploads and will reject the second one.
-
-## 5. Add it to the merge step, if the pipeline merges SARIF files
+## 4. Add it to the merge step
 
 `container_scan.py --merge-sarif` and the merge logic in `sca_scan.py`
 simply concatenate the `runs` array from each SARIF file into one merged
-artifact. Add the new tool's output path to that list.
+file. Add the new tool's output path to that list. In
+`container-scan.yml`:
+
+```yaml
+- name: Merge all SARIF reports
+  if: ${{ !cancelled() }}
+  run: |
+    python ci/container_scan.py \
+      --merge-sarif "${{ env.TRIVY_SCA_SARIF_OUTPUT }}" "${{ env.OSV_SCA_SARIF_OUTPUT }}" \
+                    "${{ env.OPENGREP_SAST_SARIF_OUTPUT }}" "${{ env.HADOLINT_SAST_SARIF_OUTPUT }}" \
+                    "${{ env.NEWTOOL_SARIF_OUTPUT }}" \
+      --merge-output "${{ env.MERGED_SARIF_OUTPUT }}"
+```
+
+## 5. The existing upload covers it
+
+Each pipeline uploads one merged SARIF under one category, so the new
+tool needs no upload step of its own:
+
+```yaml
+- name: Upload merged SARIF to GitHub Security tab
+  if: ${{ !cancelled() && hashFiles(env.MERGED_SARIF_OUTPUT) != '' }}
+  uses: github/codeql-action/upload-sarif@<pinned-sha>
+  with:
+    sarif_file: ${{ env.MERGED_SARIF_OUTPUT }}
+    category: container-scan
+```
+
+`!cancelled()` keeps the upload running when the gate failed, which is
+when the findings matter most. Each tool stays a separate run inside the
+merged file, so the Security tab still shows which tool reported what.

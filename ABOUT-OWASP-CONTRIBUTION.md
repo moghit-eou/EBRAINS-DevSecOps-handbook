@@ -17,13 +17,13 @@ for this content, and they are not in sync:
 
 | Repository | Status |
 |---|---|
-| `OWASP/DevSecOpsGuideline` | The active repository; not yet reflected on the public OWASP guideline website at the time of writing. |
-| `OWASP/www-project-devsecops-guideline` | The repository currently in sync with the public website; effectively the older version. |
+| `OWASP/DevSecOpsGuideline` | The active repository, not yet reflected on the public OWASP guideline website (checked October 2026). |
+| `OWASP/www-project-devsecops-guideline` | The repository currently in sync with the public website, effectively the older version. |
 
 ### Upstream pull request
 
-A pull request improving the OWASP DevSecOps Guideline has already been
-opened, based directly on lessons learned while building these pipelines:
+A pull request improving the OWASP DevSecOps Guideline was merged on
+24 Sep 2026, based directly on lessons learned while building these pipelines:
 
 - **Title:** docs: add SARIF normalization and exit code handling to
   Section 2-3-5 (Security Gates)
@@ -50,10 +50,28 @@ from the binary being compiled against an outdated Go standard library
 | Root cause | Binary compiled with outdated Go stdlib (`v1.25.12`) |
 | Upstream issue | [jwilder/dockerize#339](https://github.com/jwilder/dockerize/issues/339) |
 | Requested fix | Rebuild and release compiled with Go 1.25.13 or higher |
-| Status | Open |
+| Status | Resolved in dockerize v0.15.0 (29 Aug 2026), built with Go 1.27.0 |
 
 ### `jwilder/dockerize` and this project are unrelated
 
 `jwilder/dockerize` is a separate, third-party project. The report itself
 is a standalone contribution to the `jwilder/dockerize` upstream
 repository.
+
+## Related OWASP guidance, not yet covered
+
+The pipelines follow the OWASP DevSecOps Guideline, which is about scanning
+the code. Two other OWASP documents are about securing the CI/CD system
+itself:
+
+- [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/),
+  the ten most common ways a pipeline is abused, for example dependency
+  chain abuse, poisoned pipeline execution and weak credential hygiene.
+- [OWASP CI/CD Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html),
+  practical controls against those risks.
+
+They were not used during this project. EBRAINS reviewers pointed to them
+afterwards. Some of the hardening already in place lines up with them:
+scanners pinned by SHA256, actions pinned by commit SHA, a cooldown before
+Renovate proposes new releases, and least-privilege workflow permissions.
+A full review of the pipelines against both documents is future work.

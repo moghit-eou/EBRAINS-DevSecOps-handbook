@@ -2,17 +2,8 @@
 
 Every tool in these pipelines was tested locally before being wired into
 CI. This page summarizes what was selected, what was tested and
-explicitly rejected, and why. The underlying local scan results referenced
-here come from the project's local vulnerability scan report and the
-working notes taken during that testing; see the case studies for the
-fuller narrative of each investigation.
-
-> **Sourcing note:** the local vulnerability-scan report that originally
-> produced these findings was not yet available as a citable source when
-> this page was written, only the working notes describing its results
-> were. The numbers and conclusions below come from those working notes.
-> If the report becomes available as a source, the general references
-> below should be replaced with direct citations to it.
+explicitly rejected, and why. See the case studies for the fuller
+narrative of each investigation.
 
 ## Selected for CI
 
